@@ -1,0 +1,2068 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>호호의 기묘한 모험</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/1.6.20/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.usa.min.js"></script>
+<script>window.__usaTopo = (window.Datamap && Datamap.prototype.usaTopo) || null;</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.world.min.js"></script>
+<style>
+  :root{
+    --ocean:#99E5D2;
+    --land:#FFF9E7;
+    --visited:#E0017C;
+    --land-stroke:#8CBFAD;
+    --ink:#241D1A;
+    --muted:#6E6559;
+    --accent:#E0017C;
+    --gold:#E8A400;
+    --wish:#104B92;
+    --paper:#FFFDF4;
+    --hairline:rgba(36,29,26,.16);
+    --sans:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic',sans-serif;
+    --mono:ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:var(--sans);color:var(--ink);background:var(--ocean)}
+  #map{position:fixed;inset:0;cursor:crosshair}
+  #map svg{display:block}
+  body.route-mode #map{cursor:copy}
+
+  /* ---------- cartouche ---------- */
+  .cartouche{
+    position:fixed;top:18px;left:18px;z-index:20;
+    background:var(--paper);border:2px solid var(--ink);
+    box-shadow:4px 4px 0 var(--ink);
+    padding:14px 18px 12px;max-width:300px;
+  }
+  .logo-wrap{text-align:center;padding:2px 0 3px}
+  .logo{
+    font-family:Georgia,'Times New Roman',serif;font-weight:700;
+    font-size:47px;line-height:.95;letter-spacing:-.015em;
+    color:var(--accent);
+    -webkit-text-stroke:1px var(--ink);
+    text-shadow:2.5px 2.5px 0 var(--gold);
+    display:flex;align-items:center;justify-content:center;gap:1px;
+  }
+  .logo .omark{
+    width:.88em;height:.88em;flex:none;margin-left:.03em;
+    filter:drop-shadow(2.5px 2.5px 0 var(--gold));
+  }
+  .logo-sub{
+    font-family:var(--mono);font-size:9px;font-weight:700;
+    letter-spacing:.2em;color:var(--ink);margin-top:7px;white-space:nowrap;
+  }
+  .logo-kr{
+    font-size:11.5px;font-weight:800;color:var(--accent);
+    letter-spacing:.12em;margin-top:3px;white-space:nowrap;
+  }
+  .logo-kr .arw{font-weight:400}
+  .cartouche .stats{
+    font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:9px;letter-spacing:.03em;
+  }
+  .legend{display:flex;gap:11px;flex-wrap:wrap;margin-top:8px}
+  .legend span{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:4px}
+  .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .legend .k-lived i{background:var(--gold)}
+  .legend .k-trip i{background:var(--ink)}
+  .legend .k-wish i{background:var(--wish)}
+  .cartouche .c-actions{display:flex;gap:0;margin-top:11px;border-top:1.5px solid var(--ink)}
+  .cartouche .c-actions button{
+    flex:1;background:none;border:none;cursor:pointer;font-family:var(--sans);
+    font-size:11.5px;color:var(--muted);padding:9px 2px 3px;text-align:left;
+  }
+  .cartouche .c-actions button:hover{color:var(--accent)}
+  .cartouche .c-actions button + button{border-left:1px solid var(--hairline);padding-left:10px}
+  .place-index{display:none;margin-top:6px;max-height:30vh;overflow-y:auto}
+  .cartouche.open .place-index{display:block}
+  .idx-head{
+    font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);margin:8px 0 2px;font-weight:700;
+  }
+  .place-index .row{
+    display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;
+    padding:6px 2px;border-bottom:1px dotted var(--hairline);
+  }
+  .place-index .row:last-child{border-bottom:none}
+  .place-index .row-main{
+    display:flex;align-items:center;gap:6px;min-width:0;flex:1;
+    background:none;border:none;cursor:pointer;text-align:left;
+    font-family:var(--sans);font-size:12.5px;color:var(--ink);padding:0;
+  }
+  .place-index .row-main:hover{color:var(--accent)}
+  .place-index .row-main em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .place-index i.tdot{width:7px;height:7px;border-radius:50%;flex:none;display:inline-block}
+  .place-index .cnt{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap}
+  .place-index .mini{
+    background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 4px;flex:none;
+  }
+  .place-index .mini:hover{color:var(--accent)}
+  .place-index .empty-note{font-size:11.5px;color:var(--muted);padding:6px 2px;line-height:1.5}
+
+  /* ---------- search ---------- */
+  .search{position:fixed;top:18px;right:18px;z-index:22;width:222px}
+  .search .s-btn{
+    display:none;width:40px;height:40px;background:var(--paper);border:2px solid var(--ink);
+    box-shadow:3px 3px 0 var(--ink);font-size:17px;color:var(--ink);cursor:pointer;line-height:1;
+  }
+  .search input{
+    width:100%;border:2px solid var(--ink);background:var(--paper);
+    font-family:var(--sans);font-size:13px;padding:8px 11px;color:var(--ink);outline:none;
+    box-shadow:3px 3px 0 var(--ink);
+  }
+  .search input::placeholder{color:var(--muted)}
+  .search input:focus{border-color:var(--accent)}
+  .search-results{
+    position:absolute;top:calc(100% + 5px);left:0;right:0;
+    background:var(--paper);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);
+    max-height:46vh;overflow-y:auto;display:none;
+  }
+  .search-results.show{display:block}
+  .search-results button{
+    display:flex;justify-content:space-between;align-items:baseline;gap:8px;width:100%;
+    background:none;border:none;cursor:pointer;text-align:left;
+    padding:8px 11px;font-family:var(--sans);font-size:13px;color:var(--ink);
+    border-bottom:1px dotted var(--hairline);
+  }
+  .search-results button:last-child{border-bottom:none}
+  .search-results button:hover,.search-results button.sel{background:rgba(224,1,124,.08);color:var(--accent)}
+  .search-results .en{font-family:var(--mono);font-size:9.5px;color:var(--muted);white-space:nowrap}
+  .search-results .none{padding:9px 11px;font-size:11.5px;color:var(--muted)}
+
+  /* ---------- coords ---------- */
+  .coords{
+    position:fixed;left:18px;bottom:18px;z-index:20;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--ink);
+    background:var(--paper);border:1.5px solid var(--ink);padding:6px 10px;
+    box-shadow:3px 3px 0 var(--ink);min-width:190px;
+  }
+  .coords .hint{display:block;color:var(--muted);margin-top:2px;font-family:var(--sans);letter-spacing:0;font-size:10.5px}
+
+  /* ---------- zoom ---------- */
+  .zoomctl{position:fixed;right:18px;bottom:18px;z-index:20;display:flex;flex-direction:column;gap:6px}
+  .zoomctl button{
+    width:34px;height:34px;background:var(--paper);border:2px solid var(--ink);
+    font-family:var(--mono);font-size:15px;color:var(--ink);cursor:pointer;
+    box-shadow:3px 3px 0 var(--ink);line-height:1;
+  }
+  .zoomctl button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+  .zoomctl button.reset{font-size:11px}
+
+  /* ---------- buttons / chips / stars ---------- */
+  .btn{
+    font-family:var(--sans);font-size:12px;cursor:pointer;padding:6px 12px;
+    border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);
+  }
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .btn.primary:hover{filter:brightness(.92)}
+  .btn.ghost{border-color:var(--hairline);color:var(--muted)}
+  .btn.ghost:hover{color:var(--ink);border-color:var(--ink)}
+  .btn.tiny{font-size:10.5px;padding:3px 8px}
+  .btn.danger:hover{border-color:var(--accent);color:var(--accent)}
+
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{
+    font-size:11px;padding:4px 10px;border:1.5px solid var(--hairline);
+    background:var(--paper);cursor:pointer;color:var(--muted);font-family:var(--sans);
+    border-radius:999px;
+  }
+  .chip.on{color:#fff;font-weight:600;background:var(--ink);border-color:var(--ink)}
+  .chip.on[data-type=lived]{background:var(--gold);border-color:var(--gold)}
+  .chip.on[data-type=trip]{background:var(--ink);border-color:var(--ink)}
+  .chip.on[data-type=wish]{background:var(--wish);border-color:var(--wish)}
+
+  .stars{display:inline-flex;gap:2px;cursor:pointer;user-select:none}
+  .stars b{font-weight:400;font-size:17px;color:#D8CDBA;transition:color .1s}
+  .stars b.on{color:var(--gold)}
+  .stars.readonly{cursor:default}
+
+  /* ---------- popover ---------- */
+  .popover{
+    position:fixed;z-index:40;background:var(--paper);border:2px solid var(--ink);
+    box-shadow:4px 4px 0 var(--ink);padding:13px 14px;width:242px;display:none;
+  }
+  .popover.show{display:block}
+  .popover .pop-country{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase;margin-bottom:6px}
+  .popover input[type=text]{
+    width:100%;border:none;border-bottom:1.5px solid var(--ink);background:transparent;
+    font-family:var(--sans);font-size:14px;padding:4px 1px;color:var(--ink);outline:none;
+  }
+  .popover input[type=text]::placeholder{color:var(--muted)}
+  .popover .chips{margin-top:10px}
+  .popover .pop-actions{display:flex;gap:8px;margin-top:12px}
+
+  /* ---------- route bar ---------- */
+  .routebar{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(140%);z-index:35;
+    background:var(--paper);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);
+    padding:9px 12px;display:flex;align-items:center;gap:8px;max-width:94vw;flex-wrap:wrap;
+    transition:transform .25s;
+  }
+  .routebar.show{transform:translateX(-50%) translateY(0)}
+  .routebar .msg{font-size:11.5px;font-weight:600;line-height:1.35}
+  .routebar .msg b{color:var(--accent)}
+
+  /* ---------- route save modal ---------- */
+  .route-save{left:50%;top:50%;transform:translate(-50%,-50%)}
+  .route-save .rs-label{
+    display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:12px 0 3px;
+  }
+  .route-save input[type=month]{
+    width:100%;border:none;border-bottom:1.5px solid var(--hairline);background:transparent;
+    font-family:var(--mono);font-size:12.5px;padding:4px 1px;color:var(--ink);outline:none;
+  }
+  .route-save input[type=month]:focus{border-bottom-color:var(--accent)}
+
+  /* ---------- journey focus card ---------- */
+  .journey-card{
+    position:fixed;left:18px;bottom:84px;z-index:26;width:min(280px,86vw);
+    background:var(--paper);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);
+    padding:14px 16px 12px;display:none;max-height:52vh;flex-direction:column;
+  }
+  .journey-card.show{display:flex}
+  .jc-eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.24em;color:var(--accent);text-transform:uppercase;font-weight:700;margin-bottom:3px}
+  .jc-name{font-weight:800;font-size:16.5px;line-height:1.2;padding-right:26px;word-break:keep-all}
+  .jc-date{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px;letter-spacing:.05em}
+  .jc-stops{margin-top:9px;overflow-y:auto;border-top:1px solid var(--hairline);padding-top:6px}
+  .jc-stops button{
+    display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;cursor:pointer;
+    text-align:left;padding:5px 2px;font-family:var(--sans);font-size:12.5px;color:var(--ink);
+  }
+  .jc-stops button:hover{color:var(--accent)}
+  .jc-stops .num{
+    width:17px;height:17px;border-radius:50%;background:var(--accent);color:#fff;
+    font-family:var(--mono);font-size:9.5px;font-weight:700;flex:none;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .jc-tools{display:flex;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--hairline)}
+
+  /* ---------- drawer ---------- */
+  .drawer{
+    position:fixed;top:0;right:0;bottom:0;width:min(390px,92vw);z-index:30;
+    background:var(--paper);border-left:2px solid var(--ink);
+    box-shadow:-4px 0 18px rgba(36,29,26,.15);
+    transform:translateX(105%);transition:transform .3s cubic-bezier(.3,.8,.3,1);
+    display:flex;flex-direction:column;
+  }
+  .drawer.open{transform:translateX(0)}
+  .drawer-head{padding:20px 22px 14px;border-bottom:2px solid var(--ink);position:relative}
+  .drawer-head .d-country{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:5px;font-weight:700}
+  .drawer-head h2{font-weight:800;font-size:22px;line-height:1.15;padding-right:34px;word-break:keep-all}
+  .drawer-head .d-coords{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:5px;letter-spacing:.05em}
+  .drawer-head .d-meta{display:flex;align-items:center;gap:12px;margin-top:11px;flex-wrap:wrap}
+  .drawer-head .d-tools{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .close-x{
+    position:absolute;top:14px;right:14px;width:28px;height:28px;
+    background:none;border:1.5px solid var(--hairline);color:var(--muted);cursor:pointer;font-size:13px;line-height:1;
+  }
+  .close-x:hover{border-color:var(--ink);color:var(--ink)}
+  .drawer-body{flex:1;overflow-y:auto;padding:16px 22px 28px}
+
+  .trip{border:1.5px solid var(--hairline);padding:13px 14px 12px;margin-bottom:12px;background:#fff}
+  .trip .t-date{font-family:var(--mono);font-size:10.5px;color:var(--accent);letter-spacing:.05em;margin-bottom:5px;font-weight:700}
+  .trip .t-title{font-size:14px;font-weight:700;margin-bottom:5px;word-break:keep-all}
+  .trip .t-note{font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+  .trip .t-photos{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .trip .t-photos img{
+    width:74px;height:74px;object-fit:cover;border:1.5px solid var(--ink);
+    cursor:zoom-in;background:#EFE8D8;
+  }
+  .trip .t-actions{display:flex;gap:6px;margin-top:10px;opacity:.8}
+  .no-trips{font-size:13px;color:var(--muted);line-height:1.6;padding:8px 2px}
+
+  /* ---------- trip form ---------- */
+  .trip-form{border:2px solid var(--ink);background:#fff;padding:14px;margin-bottom:14px;display:none}
+  .trip-form.show{display:block}
+  .trip-form label{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:11px 0 3px}
+  .trip-form label:first-child{margin-top:0}
+  .trip-form input,.trip-form textarea{
+    width:100%;border:none;border-bottom:1px solid var(--hairline);background:transparent;
+    font-family:var(--sans);font-size:13.5px;padding:4px 1px;color:var(--ink);outline:none;
+  }
+  .trip-form input:focus,.trip-form textarea:focus{border-bottom-color:var(--accent)}
+  .trip-form textarea{resize:vertical;min-height:74px;line-height:1.6;border:1px solid var(--hairline);padding:8px;margin-top:2px}
+  .trip-form .dates{display:flex;gap:12px}
+  .trip-form .dates>div{flex:1}
+  .trip-form input[type=date],.trip-form input[type=month]{font-family:var(--mono);font-size:12px}
+  .trip-form .date-mode{margin-top:4px}
+  .trip-form .date-mode .chip{font-size:10px;padding:3px 9px}
+  .photo-strip{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .photo-strip .ph{position:relative}
+  .photo-strip img{width:58px;height:58px;object-fit:cover;border:1.5px solid var(--ink);display:block}
+  .photo-strip .rm{
+    position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;
+    background:var(--ink);color:#fff;border:none;font-size:10px;line-height:1;cursor:pointer;
+  }
+  .add-photo{
+    width:58px;height:58px;border:1.5px dashed var(--hairline);background:none;cursor:pointer;
+    color:var(--muted);font-size:19px;
+  }
+  .add-photo:hover{border-color:var(--ink);color:var(--ink)}
+  .trip-form .f-actions{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+
+  /* ---------- timeline ---------- */
+  .timeline{
+    position:fixed;top:0;left:0;bottom:0;width:min(360px,94vw);z-index:32;
+    background:var(--paper);border-right:2px solid var(--ink);
+    box-shadow:4px 0 18px rgba(36,29,26,.15);
+    transform:translateX(-105%);transition:transform .3s cubic-bezier(.3,.8,.3,1);
+    display:flex;flex-direction:column;
+  }
+  .timeline.open{transform:translateX(0)}
+  .tl-head{padding:18px 20px 13px;border-bottom:2px solid var(--ink);position:relative}
+  .tl-head .eyebrow{font-family:var(--mono);font-size:9px;letter-spacing:.24em;color:var(--accent);text-transform:uppercase;font-weight:700;margin-bottom:4px}
+  .tl-head h2{font-weight:900;font-size:19px}
+  .tl-body{flex:1;overflow-y:auto;padding:6px 20px 30px}
+  .tl-year{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--ink);font-weight:700;
+    margin:20px 0 6px;padding-bottom:5px;border-bottom:1.5px solid var(--ink);
+  }
+  .tl-item{
+    display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;
+    padding:11px 2px;border-bottom:1px dotted var(--hairline);font-family:var(--sans);
+  }
+  .tl-item:hover .tl-place{color:var(--accent)}
+  .tl-item .tl-date{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.05em}
+  .tl-item .tl-place{font-size:13.5px;font-weight:700;color:var(--ink);margin-top:3px;display:flex;align-items:center;gap:6px}
+  .tl-item .tl-place i{width:7px;height:7px;border-radius:50%;flex:none;display:inline-block}
+  .tl-item .tl-title{font-size:12px;color:var(--ink);margin-top:2px}
+  .tl-item .tl-sub{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-top:4px}
+  .tl-empty{font-size:12.5px;color:var(--muted);padding:20px 2px;line-height:1.6}
+
+  /* ---------- stats (wrapped) ---------- */
+  .year-chips{margin:14px 0 4px}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .stat{border:1.5px solid var(--ink);background:#fff;padding:10px 12px 9px}
+  .stat .v{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);line-height:1.1}
+  .stat .v small{font-size:11px;color:var(--ink);font-weight:400}
+  .stat .l{font-size:10.5px;color:var(--muted);margin-top:3px}
+  .stat-sec{margin-top:16px}
+  .stat-sec .sh{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);font-weight:700;border-bottom:1.5px solid var(--ink);padding-bottom:4px;margin-bottom:6px}
+  .stat-sec .sr{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:5px 2px;border-bottom:1px dotted var(--hairline)}
+  .stat-sec .sr:last-child{border-bottom:none}
+  .stat-sec .sr .sv{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap}
+  .stat-note{font-size:10.5px;color:var(--muted);margin-top:12px;line-height:1.5}
+
+  /* ---------- journey card records ---------- */
+  .jc-stops .rec{
+    margin:0 0 4px 25px;padding:0 2px 6px;font-size:11px;color:var(--muted);
+    border-bottom:1px dotted var(--hairline);line-height:1.45;
+  }
+  .jc-stops .rec .rd{font-family:var(--mono);font-size:9.5px;color:var(--accent);font-weight:700}
+
+  /* ---------- read-only share mode ---------- */
+  body.readonly #routeToggle,
+  body.readonly .d-tools,
+  body.readonly .t-actions,
+  body.readonly .mini,
+  body.readonly #jcEdit,
+  body.readonly #jcDelete,
+  body.readonly .bk-row{display:none!important}
+  body.readonly #map{cursor:grab}
+  .ro-badge{
+    display:none;font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--paper);
+    background:var(--ink);padding:3px 8px;margin-top:9px;text-align:center;text-transform:uppercase;
+  }
+  body.readonly .ro-badge{display:block}
+  body.readonly .c-actions #routeToggle{display:none}
+
+  /* ---------- lightbox / toast ---------- */
+  .lightbox{
+    position:fixed;inset:0;z-index:80;background:rgba(36,29,26,.82);
+    display:none;align-items:center;justify-content:center;cursor:zoom-out;padding:24px;
+  }
+  .lightbox.show{display:flex}
+  .lightbox img{max-width:100%;max-height:100%;border:3px solid var(--paper)}
+  .toast{
+    position:fixed;bottom:64px;left:50%;transform:translateX(-50%) translateY(8px);z-index:90;
+    background:var(--ink);color:var(--paper);font-size:12px;padding:8px 16px;
+    opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;max-width:86vw;text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  ::-webkit-scrollbar{width:8px}
+  ::-webkit-scrollbar-thumb{background:var(--hairline)}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+  @media (max-width:640px){
+    .cartouche{top:12px;left:12px;max-width:246px;padding:11px 13px 9px}
+    .logo{font-size:38px}
+    .logo-sub{letter-spacing:.14em}
+    .coords{display:none}
+    .zoomctl{bottom:14px;right:12px}
+    .search{top:12px;right:12px;width:40px}
+    .search input{display:none}
+    .search .s-btn{display:block}
+    .search.open{left:12px;right:12px;width:auto;z-index:28}
+    .search.open input{display:block}
+    .search.open .s-btn{display:none}
+    .routebar{bottom:14px}
+    .journey-card{left:12px;bottom:14px;max-height:44vh}
+    .drawer{
+      top:auto;left:0;right:0;width:100%;height:70vh;
+      border-left:none;border-top:2px solid var(--ink);
+      transform:translateY(105%);
+    }
+    .drawer.open{transform:translateY(0)}
+    .timeline{width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<header class="cartouche" id="cartouche">
+  <div class="logo-wrap">
+    <h1 class="logo" aria-label="HOHO">HOH<svg class="omark" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="46" fill="#241D1A"/>
+      <circle cx="50" cy="50" r="46" fill="none" stroke="#E0017C" stroke-width="4"/>
+      <path fill="#E0017C" fill-rule="evenodd" d="M50 20 C35 20 24 31.5 24 46 C24 64 50 84 50 84 C50 84 76 64 76 46 C76 31.5 65 20 50 20 Z M50 36 a10 10 0 1 1 0 20 a10 10 0 1 1 0 -20 Z"/>
+    </svg></h1>
+    <div class="logo-sub">HOHO&rsquo;s Bizarre Adventure</div>
+    <div class="logo-kr"><span class="arw">―</span> 호호의 기묘한 모험 <span class="arw">→</span></div>
+  </div>
+  <div class="stats" id="stats">0개국 · 0곳 · 0번의 기록</div>
+  <div class="legend">
+    <span class="k-lived"><i></i>살았던 곳</span>
+    <span class="k-trip"><i></i>여행</span>
+    <span class="k-wish"><i></i>가고 싶은 곳</span>
+  </div>
+  <div class="c-actions">
+    <button id="indexToggle">핀 목록</button>
+    <button id="timelineToggle">타임라인</button>
+    <button id="statsToggle">통계</button>
+    <button id="routeToggle">＋ 여정</button>
+  </div>
+  <nav class="place-index" id="placeIndex"></nav>
+  <div class="ro-badge">Read Only</div>
+</header>
+
+<div class="search" id="searchBox">
+  <button class="s-btn" id="searchBtn" aria-label="도시 검색">⌕</button>
+  <input type="text" id="searchInput" placeholder="도시 검색 (예: 도쿄)" autocomplete="off">
+  <div class="search-results" id="searchResults"></div>
+</div>
+
+<div class="coords" id="coords">
+  <span id="coordsVal">—° N · —° E</span>
+  <span class="hint">지도를 클릭하거나 도시를 검색해 핀을 추가하세요</span>
+</div>
+
+<div class="zoomctl">
+  <button id="zoomIn" aria-label="확대">+</button>
+  <button id="zoomOut" aria-label="축소">−</button>
+  <button id="zoomReset" class="reset" aria-label="한국으로">⌂</button>
+</div>
+
+<div class="popover" id="popover">
+  <div class="pop-country" id="popCountry">새 장소</div>
+  <input type="text" id="popName" placeholder="장소 이름 (예: 시카고)" maxlength="40">
+  <div class="chips" id="popChips">
+    <button class="chip" data-type="lived">살았던 곳</button>
+    <button class="chip on" data-type="trip">여행</button>
+    <button class="chip" data-type="wish">가고 싶은 곳</button>
+  </div>
+  <div class="pop-actions">
+    <button class="btn primary" id="popAdd">핀 추가</button>
+    <button class="btn ghost" id="popCancel">취소</button>
+  </div>
+</div>
+
+<div class="routebar" id="routebar">
+  <span class="msg" id="routeMsg"></span>
+  <button class="btn tiny ghost" id="routeUndo">되돌리기</button>
+  <button class="btn tiny ghost" id="routeCancel">취소</button>
+  <button class="btn tiny primary" id="routeDone">완료</button>
+</div>
+
+<div class="popover route-save" id="routeSave">
+  <div class="pop-country">여정 저장</div>
+  <input type="text" id="rsName" placeholder="여정 이름 (예: 일본 전국여행)" maxlength="40">
+  <label class="rs-label" for="rsStart">시기 (선택 · 월 단위)</label>
+  <input type="month" id="rsStart">
+  <div class="pop-actions">
+    <button class="btn primary" id="rsSave">저장</button>
+    <button class="btn ghost" id="rsCancel">취소</button>
+  </div>
+</div>
+
+<div class="journey-card" id="journeyCard">
+  <button class="close-x" id="jcClose" aria-label="닫기">✕</button>
+  <div class="jc-eyebrow">Journey</div>
+  <div class="jc-name" id="jcName"></div>
+  <div class="jc-date" id="jcDate"></div>
+  <div class="jc-stops" id="jcStops"></div>
+  <div class="jc-tools">
+    <button class="btn tiny ghost" id="jcEdit">✎ 수정</button>
+    <button class="btn tiny ghost danger" id="jcDelete">삭제</button>
+  </div>
+</div>
+
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <div class="drawer-head">
+    <button class="close-x" id="drawerClose" aria-label="닫기">✕</button>
+    <div class="d-country" id="dCountry"></div>
+    <h2 id="dName"></h2>
+    <div class="d-coords" id="dCoords"></div>
+    <div class="d-meta">
+      <div class="stars" id="dStars" title="개인 평점"></div>
+      <div class="chips" id="dChips">
+        <button class="chip" data-type="lived">살았던 곳</button>
+        <button class="chip" data-type="trip">여행</button>
+        <button class="chip" data-type="wish">가고 싶은 곳</button>
+      </div>
+    </div>
+    <div class="d-tools">
+      <button class="btn tiny primary" id="addTripBtn">＋ 기록 추가</button>
+      <button class="btn tiny ghost" id="renameBtn">이름 변경</button>
+      <button class="btn tiny ghost danger" id="deletePlaceBtn">핀 삭제</button>
+    </div>
+  </div>
+  <div class="drawer-body">
+    <div class="trip-form" id="tripForm">
+      <label for="tfTitle">제목 (선택)</label>
+      <input type="text" id="tfTitle" placeholder="예: 여름 로드트립" maxlength="60">
+      <label>날짜 단위</label>
+      <div class="chips date-mode" id="dateMode">
+        <button class="chip on" data-mode="day" type="button">일 단위</button>
+        <button class="chip" data-mode="month" type="button">월 단위</button>
+      </div>
+      <div class="dates">
+        <div><label for="tfStart">시작</label><input type="date" id="tfStart"></div>
+        <div><label for="tfEnd">종료 (선택)</label><input type="date" id="tfEnd"></div>
+      </div>
+      <label for="tfNote">일기 · 메모</label>
+      <textarea id="tfNote" placeholder="그날 뭐 했는지, 뭐 먹었는지, 어땠는지…"></textarea>
+      <label>사진</label>
+      <div class="photo-strip" id="photoStrip">
+        <button class="add-photo" id="addPhotoBtn" title="사진 추가" type="button">＋</button>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
+      <div class="f-actions">
+        <button class="btn ghost" id="tfCancel">취소</button>
+        <button class="btn primary" id="tfSave">저장</button>
+      </div>
+    </div>
+    <div id="tripList"></div>
+  </div>
+</aside>
+
+<aside class="timeline" id="timeline" aria-hidden="true">
+  <div class="tl-head">
+    <button class="close-x" id="timelineClose" aria-label="닫기">✕</button>
+    <div class="eyebrow">Timeline</div>
+    <h2>모험의 기록</h2>
+  </div>
+  <div class="tl-body" id="tlBody"></div>
+</aside>
+
+<aside class="timeline" id="statsPanel" aria-hidden="true">
+  <div class="tl-head">
+    <button class="close-x" id="statsClose" aria-label="닫기">✕</button>
+    <div class="eyebrow">Wrapped</div>
+    <h2>모험의 결산</h2>
+  </div>
+  <div class="tl-body">
+    <div class="chips year-chips" id="yearChips"></div>
+    <div id="statsBody"></div>
+  </div>
+</aside>
+
+<div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
+<input type="file" id="importInput" accept="application/json,.json" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+
+  var KEY = 'travel-log:data';
+  var PHOTO_PREFIX = 'travel-log:photo:';
+  // read-only share mode: open with #view (e.g. https://.../index.html#view)
+  var READONLY = location.hash.indexOf('view')>-1 || location.search.indexOf('view')>-1;
+  if(READONLY) document.body.classList.add('readonly');
+  var state = { places: [], routes: [] };
+  var photoCache = {};
+
+  // ---------- built-in city coordinates (ko / en) ----------
+  var CITIES = [
+    ['서울','Seoul','KR',37.57,126.98],['부산','Busan','KR',35.18,129.08],['인천','Incheon','KR',37.46,126.71],['대구','Daegu','KR',35.87,128.60],['대전','Daejeon','KR',36.35,127.38],['광주','Gwangju','KR',35.16,126.85],['울산','Ulsan','KR',35.54,129.31],['수원','Suwon','KR',37.26,127.03],['제주','Jeju','KR',33.50,126.53],['서귀포','Seogwipo','KR',33.25,126.56],['춘천','Chuncheon','KR',37.88,127.73],['강릉','Gangneung','KR',37.75,128.90],['속초','Sokcho','KR',38.21,128.59],['전주','Jeonju','KR',35.82,127.15],['여수','Yeosu','KR',34.76,127.66],['경주','Gyeongju','KR',35.86,129.22],['포항','Pohang','KR',36.02,129.36],['창원','Changwon','KR',35.23,128.68],['청주','Cheongju','KR',36.64,127.49],['천안','Cheonan','KR',36.82,127.11],['목포','Mokpo','KR',34.81,126.39],['안동','Andong','KR',36.57,128.73],['군산','Gunsan','KR',35.97,126.71],['세종','Sejong','KR',36.48,127.29],['평창','Pyeongchang','KR',37.37,128.39],['양양','Yangyang','KR',38.08,128.62],['통영','Tongyeong','KR',34.85,128.43],['거제','Geoje','KR',34.88,128.62],
+    ['도쿄','Tokyo','JP',35.68,139.69],['오사카','Osaka','JP',34.69,135.50],['교토','Kyoto','JP',35.01,135.77],['요코하마','Yokohama','JP',35.44,139.64],['나고야','Nagoya','JP',35.18,136.91],['삿포로','Sapporo','JP',43.06,141.35],['후쿠오카','Fukuoka','JP',33.59,130.40],['기타큐슈','Kitakyushu','JP',33.88,130.88],['나하 (오키나와)','Naha, Okinawa','JP',26.21,127.68],['고베','Kobe','JP',34.69,135.20],['나라','Nara','JP',34.69,135.80],['히로시마','Hiroshima','JP',34.39,132.46],['센다이','Sendai','JP',38.27,140.87],['아오모리','Aomori','JP',40.82,140.75],['가나자와','Kanazawa','JP',36.56,136.66],['벳푸','Beppu','JP',33.28,131.49],['유후인','Yufuin','JP',33.26,131.37],['하코다테','Hakodate','JP',41.77,140.73],['오타루','Otaru','JP',43.19,141.00],['니세코','Niseko','JP',42.80,140.69],['나가사키','Nagasaki','JP',32.75,129.88],['구마모토','Kumamoto','JP',32.80,130.71],['가고시마','Kagoshima','JP',31.60,130.56],['닛코','Nikko','JP',36.72,139.70],['하코네','Hakone','JP',35.23,139.11],['다카마쓰','Takamatsu','JP',34.34,134.05],['마쓰야마','Matsuyama','JP',33.84,132.77],
+    ['베이징','Beijing','CN',39.90,116.40],['상하이','Shanghai','CN',31.23,121.47],['광저우','Guangzhou','CN',23.13,113.26],['선전','Shenzhen','CN',22.54,114.06],['청두','Chengdu','CN',30.57,104.07],['시안','Xi\'an','CN',34.34,108.94],['항저우','Hangzhou','CN',30.27,120.15],['칭다오','Qingdao','CN',36.07,120.38],['홍콩','Hong Kong','HK',22.32,114.17],['마카오','Macau','MO',22.20,113.55],['타이베이','Taipei','TW',25.03,121.57],['가오슝','Kaohsiung','TW',22.62,120.31],['타이중','Taichung','TW',24.15,120.67],
+    ['방콕','Bangkok','TH',13.76,100.50],['치앙마이','Chiang Mai','TH',18.79,98.98],['푸켓','Phuket','TH',7.88,98.39],['싱가포르','Singapore','SG',1.35,103.82],['쿠알라룸푸르','Kuala Lumpur','MY',3.14,101.69],['코타키나발루','Kota Kinabalu','MY',5.98,116.07],['하노이','Hanoi','VN',21.03,105.85],['다낭','Da Nang','VN',16.05,108.20],['호치민','Ho Chi Minh City','VN',10.82,106.63],['나트랑','Nha Trang','VN',12.24,109.19],['마닐라','Manila','PH',14.60,120.98],['세부','Cebu','PH',10.32,123.89],['보라카이','Boracay','PH',11.97,121.92],['자카르타','Jakarta','ID',-6.21,106.85],['발리 (덴파사르)','Bali (Denpasar)','ID',-8.65,115.22],['프놈펜','Phnom Penh','KH',11.56,104.92],['씨엠립','Siem Reap','KH',13.36,103.86],['비엔티안','Vientiane','LA',17.97,102.63],['델리','Delhi','IN',28.61,77.21],['뭄바이','Mumbai','IN',19.08,72.88],['카트만두','Kathmandu','NP',27.72,85.32],['콜롬보','Colombo','LK',6.93,79.85],['말레 (몰디브)','Male, Maldives','MV',4.17,73.51],
+    ['두바이','Dubai','AE',25.20,55.27],['아부다비','Abu Dhabi','AE',24.45,54.38],['도하','Doha','QA',25.29,51.53],['이스탄불','Istanbul','TR',41.01,28.98],['카파도키아 (괴레메)','Cappadocia (Goreme)','TR',38.64,34.83],['타슈켄트','Tashkent','UZ',41.30,69.24],['알마티','Almaty','KZ',43.24,76.89],['울란바토르','Ulaanbaatar','MN',47.89,106.91],
+    ['런던','London','GB',51.51,-0.13],['에든버러','Edinburgh','GB',55.95,-3.19],['파리','Paris','FR',48.86,2.35],['니스','Nice','FR',43.71,7.26],['리옹','Lyon','FR',45.76,4.84],['마르세유','Marseille','FR',43.30,5.37],['로마','Rome','IT',41.90,12.50],['밀라노','Milan','IT',45.46,9.19],['베네치아','Venice','IT',45.44,12.32],['피렌체','Florence','IT',43.77,11.26],['나폴리','Naples','IT',40.85,14.27],['마드리드','Madrid','ES',40.42,-3.70],['바르셀로나','Barcelona','ES',41.39,2.17],['세비야','Seville','ES',37.39,-5.99],['그라나다','Granada','ES',37.18,-3.60],['리스본','Lisbon','PT',38.72,-9.14],['포르투','Porto','PT',41.15,-8.61],['베를린','Berlin','DE',52.52,13.40],['뮌헨','Munich','DE',48.14,11.58],['프랑크푸르트','Frankfurt','DE',50.11,8.68],['함부르크','Hamburg','DE',53.55,9.99],['암스테르담','Amsterdam','NL',52.37,4.90],['브뤼셀','Brussels','BE',50.85,4.35],['빈','Vienna','AT',48.21,16.37],['잘츠부르크','Salzburg','AT',47.81,13.05],['프라하','Prague','CZ',50.08,14.44],['부다페스트','Budapest','HU',47.50,19.04],['바르샤바','Warsaw','PL',52.23,21.01],['크라쿠프','Krakow','PL',50.06,19.94],['취리히','Zurich','CH',47.38,8.54],['제네바','Geneva','CH',46.20,6.14],['인터라켄','Interlaken','CH',46.69,7.87],['루체른','Lucerne','CH',47.05,8.31],['코펜하겐','Copenhagen','DK',55.68,12.57],['스톡홀름','Stockholm','SE',59.33,18.07],['오슬로','Oslo','NO',59.91,10.75],['베르겐','Bergen','NO',60.39,5.32],['헬싱키','Helsinki','FI',60.17,24.94],['레이캬비크','Reykjavik','IS',64.15,-21.94],['더블린','Dublin','IE',53.35,-6.26],['아테네','Athens','GR',37.98,23.73],['산토리니','Santorini','GR',36.39,25.46],['자그레브','Zagreb','HR',45.81,15.98],['두브로브니크','Dubrovnik','HR',42.65,18.09],['류블랴나','Ljubljana','SI',46.06,14.51],['모스크바','Moscow','RU',55.76,37.62],['상트페테르부르크','St. Petersburg','RU',59.93,30.34],
+    ['뉴욕','New York','US',40.71,-74.01],['로스앤젤레스','Los Angeles','US',34.05,-118.24],['샌프란시스코','San Francisco','US',37.77,-122.42],['시애틀','Seattle','US',47.61,-122.33],['벨뷰','Bellevue','US',47.61,-122.20],['타코마','Tacoma','US',47.25,-122.44],['포틀랜드','Portland','US',45.52,-122.68],['시카고','Chicago','US',41.88,-87.63],['에번스턴','Evanston','US',42.05,-87.69],['네이퍼빌','Naperville','US',41.79,-88.15],['샴페인','Champaign','US',40.12,-88.24],['어배나','Urbana','US',40.11,-88.21],['보스턴','Boston','US',42.36,-71.06],['워싱턴 D.C.','Washington D.C.','US',38.91,-77.04],['필라델피아','Philadelphia','US',39.95,-75.17],['마이애미','Miami','US',25.76,-80.19],['올랜도','Orlando','US',28.54,-81.38],['애틀랜타','Atlanta','US',33.75,-84.39],['오스틴','Austin','US',30.27,-97.74],['댈러스','Dallas','US',32.78,-96.80],['휴스턴','Houston','US',29.76,-95.37],['덴버','Denver','US',39.74,-104.99],['라스베이거스','Las Vegas','US',36.17,-115.14],['샌디에이고','San Diego','US',32.72,-117.16],['산호세','San Jose','US',37.34,-121.89],['호놀룰루','Honolulu','US',21.31,-157.86],['앵커리지','Anchorage','US',61.22,-149.90],['매디슨','Madison','US',43.07,-89.40],['미니애폴리스','Minneapolis','US',44.98,-93.27],['세인트루이스','St. Louis','US',38.63,-90.20],['내슈빌','Nashville','US',36.16,-86.78],['뉴올리언스','New Orleans','US',29.95,-90.07],['솔트레이크시티','Salt Lake City','US',40.76,-111.89],['피닉스','Phoenix','US',33.45,-112.07],['밴쿠버','Vancouver','CA',49.28,-123.12],['토론토','Toronto','CA',43.65,-79.38],['몬트리올','Montreal','CA',45.50,-73.57],['캘거리','Calgary','CA',51.05,-114.07],['멕시코시티','Mexico City','MX',19.43,-99.13],['칸쿤','Cancun','MX',21.16,-86.85],
+    ['상파울루','Sao Paulo','BR',-23.55,-46.63],['리우데자네이루','Rio de Janeiro','BR',-22.91,-43.17],['부에노스아이레스','Buenos Aires','AR',-34.60,-58.38],['산티아고','Santiago','CL',-33.45,-70.67],['리마','Lima','PE',-12.05,-77.04],['쿠스코','Cusco','PE',-13.53,-71.97],['보고타','Bogota','CO',4.71,-74.07],['우유니','Uyuni','BO',-20.46,-66.83],
+    ['시드니','Sydney','AU',-33.87,151.21],['멜버른','Melbourne','AU',-37.81,144.96],['브리즈번','Brisbane','AU',-27.47,153.03],['골드코스트','Gold Coast','AU',-28.02,153.40],['퍼스','Perth','AU',-31.95,115.86],['오클랜드','Auckland','NZ',-36.85,174.76],['퀸스타운','Queenstown','NZ',-45.03,168.66],['괌','Guam','GU',13.44,144.79],['사이판','Saipan','MP',15.18,145.75],
+    ['카이로','Cairo','EG',30.04,31.24],['마라케시','Marrakesh','MA',31.63,-8.01],['케이프타운','Cape Town','ZA',-33.92,18.42],['나이로비','Nairobi','KE',-1.29,36.82]
+  ];
+
+  // ---------- big lakes drawn as ocean (approx outlines, [lng,lat]) ----------
+  var LAKES = [
+    /* Superior */ [[-92.1,46.72],[-90.8,46.9],[-89.6,47.0],[-88.4,46.85],[-87.6,46.5],[-86.7,46.45],[-85.4,46.5],[-84.35,46.5],[-84.55,46.95],[-85.1,47.3],[-86.3,47.75],[-87.3,48.1],[-88.4,48.3],[-89.5,48.05],[-90.7,48.1],[-91.6,47.75]],
+    /* Michigan */ [[-85.0,45.95],[-84.75,45.8],[-85.4,45.3],[-86.0,45.2],[-86.5,44.7],[-86.55,44.0],[-86.25,43.2],[-86.2,42.4],[-86.6,41.9],[-87.2,41.65],[-87.65,41.75],[-87.85,42.3],[-87.85,43.4],[-87.55,44.3],[-87.0,44.7],[-87.5,45.3],[-86.9,45.75],[-85.7,46.05]],
+    /* Huron */ [[-84.7,45.9],[-83.9,45.3],[-83.4,45.05],[-83.3,44.3],[-83.55,43.9],[-83.35,43.6],[-82.6,43.0],[-82.15,43.0],[-81.7,43.4],[-81.7,44.3],[-80.9,44.7],[-80.1,44.45],[-79.75,44.85],[-80.4,45.4],[-81.3,45.35],[-81.7,45.9],[-82.6,46.0],[-83.6,46.1],[-84.3,46.05]],
+    /* Erie */ [[-83.15,41.95],[-82.4,41.68],[-81.4,41.63],[-80.4,41.95],[-79.4,42.35],[-78.9,42.8],[-79.35,42.9],[-80.3,42.7],[-81.4,42.62],[-82.45,42.32],[-83.15,42.05]],
+    /* Ontario */ [[-79.75,43.25],[-78.9,43.2],[-77.8,43.3],[-76.9,43.27],[-76.2,43.55],[-76.55,44.1],[-77.6,43.95],[-78.8,43.9],[-79.55,43.6]],
+    /* Great Salt Lake */ [[-112.85,40.95],[-112.45,40.7],[-112.15,40.95],[-112.3,41.35],[-112.75,41.5],[-113.0,41.25]]
+  ];
+
+  var TYPE = {
+    lived: { label:'살았던 곳', color: css('--gold') },
+    trip:  { label:'여행',       color: css('--ink') },
+    wish:  { label:'가고 싶은 곳', color: css('--wish') }
+  };
+
+  // ---------- utils ----------
+  function $(id){ return document.getElementById(id); }
+  function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });}
+  function fmtDate(s){
+    if(!s) return '';
+    var p=s.split('-');
+    return p.length===2 ? p[0]+'.'+p[1] : p[0]+'.'+p[1]+'.'+p[2];
+  }
+  function fmtRange(t){
+    if(!t.start) return '날짜 미정';
+    if(!t.end || t.end===t.start) return fmtDate(t.start);
+    var sameYear = t.start.slice(0,4)===t.end.slice(0,4);
+    var tail = sameYear ? t.end.slice(5).replace('-','.') : fmtDate(t.end);
+    return fmtDate(t.start)+' – '+tail;
+  }
+  function dateCmp(s){ return s.length===7 ? s+'-01' : s; }
+  function fmtLL(lat,lng){
+    return Math.abs(lat).toFixed(2)+'° '+(lat>=0?'N':'S')+' · '+Math.abs(lng).toFixed(2)+'° '+(lng>=0?'E':'W');
+  }
+  function normLng(lng){ while(lng>180)lng-=360; while(lng<-180)lng+=360; return lng; }
+  var toastTimer;
+  function toast(msg){
+    var t=$('toast'); t.textContent=msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.classList.remove('show'); },2600);
+  }
+
+  // ---------- storage (Claude artifact storage -> localStorage -> memory) ----------
+  var warned=false;
+  function warnOnce(){ if(!warned){ toast('저장소에 연결할 수 없어 이 세션에서만 기록이 유지돼요. 백업은 핀 목록의 내보내기를 이용하세요'); warned=true; } }
+  var store=(function(){
+    if(window.storage){
+      return {
+        get:function(k){ return window.storage.get(k).then(function(r){ return (r&&r.value!=null)?r.value:null; }); },
+        set:function(k,v){ return window.storage.set(k,v); },
+        del:function(k){ return window.storage.delete(k); }
+      };
+    }
+    try{
+      localStorage.setItem('__t','1'); localStorage.removeItem('__t');
+      return {
+        get:function(k){ var v=localStorage.getItem(k); return Promise.resolve(v); },
+        set:function(k,v){ localStorage.setItem(k,v); return Promise.resolve(); },
+        del:function(k){ localStorage.removeItem(k); return Promise.resolve(); }
+      };
+    }catch(e){}
+    var mem={};
+    return {
+      volatile:true,
+      get:function(k){ return Promise.resolve(mem[k]!=null?mem[k]:null); },
+      set:function(k,v){ mem[k]=v; warnOnce(); return Promise.resolve(); },
+      del:function(k){ delete mem[k]; return Promise.resolve(); }
+    };
+  })();
+  function loadData(){
+    return store.get(KEY).then(function(v){
+      return v ? JSON.parse(v) : null;
+    }).catch(function(){ return null; });
+  }
+  function saveData(){
+    if(READONLY) return;
+    store.set(KEY, JSON.stringify(state)).catch(warnOnce);
+  }
+  function savePhoto(id,dataURL){
+    photoCache[id]=dataURL;
+    store.set(PHOTO_PREFIX+id, dataURL).catch(function(){
+      toast('사진 저장 공간이 부족할 수 있어요. 백업(내보내기)을 권장해요');
+    });
+  }
+  function loadPhoto(id){
+    if(photoCache[id]) return Promise.resolve(photoCache[id]);
+    return store.get(PHOTO_PREFIX+id).then(function(v){
+      if(v){ photoCache[id]=v; return v; }
+      return null;
+    }).catch(function(){ return null; });
+  }
+  function deletePhoto(id){
+    delete photoCache[id];
+    store.del(PHOTO_PREFIX+id).catch(function(){});
+  }
+
+  // ---------- backup: export / import ----------
+  function allPhotoIds(){
+    var ids=[];
+    state.places.forEach(function(p){
+      (p.trips||[]).forEach(function(t){ (t.photos||[]).forEach(function(id){ ids.push(id); }); });
+    });
+    return ids;
+  }
+  function exportBackup(){
+    var ids=allPhotoIds();
+    Promise.all(ids.map(function(id){ return loadPhoto(id); })).then(function(urls){
+      var photos={};
+      ids.forEach(function(id,i){ if(urls[i]) photos[id]=urls[i]; });
+      var payload={ app:'hoho-travel-log', version:1, exportedAt:new Date().toISOString(), places:state.places, routes:state.routes, photos:photos };
+      var blob=new Blob([JSON.stringify(payload)], {type:'application/json'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='hoho-travel-log-backup.json';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+      toast('백업 파일을 내려받았어요');
+    });
+  }
+  function importBackup(file){
+    var reader=new FileReader();
+    reader.onerror=function(){ toast('파일을 읽을 수 없었어요'); };
+    reader.onload=function(){
+      try{
+        var data=JSON.parse(reader.result);
+        if(!data || !data.places){ toast('올바른 백업 파일이 아니에요'); return; }
+        if(!confirm('백업을 불러오면 현재 기록을 덮어써요. 계속할까요?')) return;
+        state.places=data.places||[];
+        state.routes=data.routes||[];
+        migrateState();
+        var photos=data.photos||{};
+        Object.keys(photos).forEach(function(id){ savePhoto(id, photos[id]); });
+        saveData();
+        renderAll();
+        toast('백업을 불러왔어요');
+      }catch(e){ toast('올바른 백업 파일이 아니에요'); }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------- map ----------
+  var W=window.innerWidth, H=window.innerHeight;
+  var projection, path, root, world, statesG, lakesG, linesG, pinLayer, svg, zoom;
+  var features=[], stateFeatures=[];
+  var currentK=1;
+  var pending=null, activePlaceId=null, editingTripId=null;
+  var routeMode=false, routeDraft=[], editingRouteId=null, focusRouteId=null;
+  var HOME={lat:36.3, lng:127.8, k:5};
+
+  var datamap = new Datamap({
+    element: $('map'),
+    projection:'mercator',
+    responsive:false,
+    fills:{ defaultFill: css('--land') },
+    geographyConfig:{
+      borderColor: css('--land-stroke'),
+      borderWidth: 0.6,
+      highlightOnHover:false,
+      popupOnHover:false
+    },
+    done: onMapReady
+  });
+
+  // pure math point-in-polygon (no canvas dependency)
+  function pointInRing(lng,lat,ring){
+    var inside=false;
+    for(var i=0,j=ring.length-1;i<ring.length;j=i++){
+      var xi=ring[i][0], yi=ring[i][1], xj=ring[j][0], yj=ring[j][1];
+      if(((yi>lat)!==(yj>lat)) && (lng < (xj-xi)*(lat-yi)/(yj-yi)+xi)) inside=!inside;
+    }
+    return inside;
+  }
+  function pointInGeom(lng,lat,geom){
+    if(!geom||!geom.coordinates) return false;
+    var k,r,c;
+    if(geom.type==='Polygon'){
+      c=0;
+      for(r=0;r<geom.coordinates.length;r++) if(pointInRing(lng,lat,geom.coordinates[r])) c++;
+      return c%2===1;
+    }
+    if(geom.type==='MultiPolygon'){
+      for(k=0;k<geom.coordinates.length;k++){
+        c=0;
+        for(r=0;r<geom.coordinates[k].length;r++) if(pointInRing(lng,lat,geom.coordinates[k][r])) c++;
+        if(c%2===1) return true;
+      }
+    }
+    return false;
+  }
+  function regionAtLL(lat,lng){
+    var i,f;
+    try{
+      for(i=0;i<stateFeatures.length;i++){
+        f=stateFeatures[i];
+        if(pointInGeom(lng,lat,f.geometry)) return { id:'US-'+f.id, name:((f.properties&&f.properties.name)||f.id)+', USA' };
+      }
+      for(i=0;i<features.length;i++){
+        f=features[i];
+        if(pointInGeom(lng,lat,f.geometry)) return { id:f.id, name:(f.properties&&f.properties.name)||f.id };
+      }
+    }catch(e){}
+    return null;
+  }
+
+  function lakePathD(ring){
+    var d='';
+    for(var i=0;i<ring.length;i++){
+      var p=projection([ring[i][0],ring[i][1]]);
+      d+=(i?'L':'M')+p[0]+','+p[1];
+    }
+    return d+'Z';
+  }
+
+  function onMapReady(dm){
+    svg=dm.svg;
+    projection=dm.projection;
+    path=dm.path;
+    features=svg.selectAll('.datamaps-subunit').data();
+
+    root=svg.append('g').attr('id','zoom-root');
+    world=root.append('g').attr('id','world');
+    var wn=world.node(), rn=root.node(), sn=svg.node();
+    Array.prototype.slice.call(sn.childNodes).forEach(function(n){ if(n!==rn) wn.appendChild(n); });
+
+    // US states layer
+    statesG=world.append('g').attr('class','us-states');
+    try{
+      var usTopo=window.__usaTopo;
+      if(usTopo){
+        if(typeof usTopo==='string') usTopo=JSON.parse(usTopo);
+        var objKey=Object.keys(usTopo.objects)[0];
+        stateFeatures=topojson.feature(usTopo, usTopo.objects[objKey]).features;
+        statesG.selectAll('path').data(stateFeatures).enter().append('path')
+          .attr('d', path)
+          .attr('fill', css('--land'))
+          .attr('stroke', css('--land-stroke'))
+          .attr('stroke-width', 0.45);
+      }
+    }catch(e){ stateFeatures=[]; }
+
+    // big lakes as ocean
+    lakesG=world.append('g').attr('class','lakes');
+    LAKES.forEach(function(ring){
+      lakesG.append('path')
+        .attr('d', lakePathD(ring))
+        .attr('fill', css('--ocean'))
+        .attr('stroke', css('--land-stroke'))
+        .attr('stroke-width', 0.4);
+    });
+
+    linesG=world.append('g').attr('class','routes');
+    pinLayer=world.append('g').attr('class','pins');
+
+    root.append('use').attr('xlink:href','#world').attr('x',-W);
+    root.append('use').attr('xlink:href','#world').attr('x', W);
+
+    zoom=d3.behavior.zoom()
+      .scaleExtent([1,120])
+      .size([W,H])
+      .on('zoom', function(){
+        currentK=d3.event.scale;
+        var t=d3.event.translate;
+        var span=W*currentK;
+        t[0]=t[0]-Math.round(t[0]/span)*span;
+        zoom.translate(t);
+        root.attr('transform','translate('+t+')scale('+currentK+')');
+        hidePopover();
+        updateScaleDependents();
+      });
+    svg.call(zoom).on('dblclick.zoom', null);
+
+    svg.on('click', function(){
+      if(d3.event.defaultPrevented) return;
+      var m=d3.mouse(root.node());
+      var mx=((m[0]%W)+W)%W, my=m[1];
+      var hit=pinAt(mx,my);
+
+      if(routeMode){
+        if(hit){
+          var lastP=routeDraft.length?routeDraft[routeDraft.length-1]:null;
+          if(lastP && lastP.p===hit.id) return;
+          routeDraft.push({p:hit.id});
+        }else{
+          var ll0=projection.invert([mx,my]);
+          if(!ll0||isNaN(ll0[0])||Math.abs(ll0[1])>85) return;
+          routeDraft.push({ll:[+ll0[1].toFixed(4), +normLng(ll0[0]).toFixed(4)]});
+        }
+        updateRouteBar(); renderDraftLine();
+        return;
+      }
+      if(hit){ openDrawer(hit.id); return; }
+      if(READONLY) return;
+
+      var ll=projection.invert([mx,my]);
+      if(!ll||isNaN(ll[0])||isNaN(ll[1])||Math.abs(ll[1])>85) return;
+      var geo=regionAtLL(ll[1], normLng(ll[0]));
+      pending={
+        lat:ll[1], lng:normLng(ll[0]),
+        country:geo?geo.id:null, countryName:geo?geo.name:null,
+        type:'trip', prefill:''
+      };
+      showPopover(d3.event.clientX, d3.event.clientY);
+    });
+
+    svg.on('mousemove', function(){
+      var m=d3.mouse(root.node());
+      var mx=((m[0]%W)+W)%W;
+      var ll=projection.invert([mx,m[1]]);
+      if(ll&&!isNaN(ll[0])) $('coordsVal').textContent=fmtLL(ll[1],normLng(ll[0]));
+    });
+
+    loadData().then(function(data){
+      var useLocal = data && !READONLY;
+      if(useLocal){
+        applyData(data);
+        boot();
+      }else{
+        // deployed page (GitHub Pages 등): try bundled data.json — used by #view share links,
+        // and as initial data when local storage is empty
+        fetchSeed().then(function(seed){
+          if(seed){
+            applyData(seed);
+            var photos=seed.photos||{};
+            Object.keys(photos).forEach(function(id){ photoCache[id]=photos[id]; });
+          }else if(data){
+            applyData(data);
+          }
+          boot();
+        });
+      }
+      function applyData(d){
+        state.places=d.places||[];
+        state.routes=d.routes||[];
+        if(migrateState()) saveData();
+      }
+      function boot(){
+        renderAll();
+        goTo(HOME.lat, HOME.lng, HOME.k, 0);
+      }
+    });
+  }
+
+  function fetchSeed(){
+    if(location.protocol!=='http:' && location.protocol!=='https:') return Promise.resolve(null);
+    if(typeof fetch!=='function') return Promise.resolve(null);
+    return fetch('data.json').then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; });
+  }
+
+  function migrateState(){
+    var dirty=false;
+    state.places.forEach(function(p){
+      if(!p.type){ p.type='trip'; dirty=true; }
+      if(p.rating==null){ p.rating=0; dirty=true; }
+      (p.trips||[]).forEach(function(t){ if(!t.photos) t.photos=[]; });
+      if(!p.country || p.country==='USA'){
+        var geo=regionAtLL(p.lat,p.lng);
+        if(geo){ p.country=geo.id; p.countryName=geo.name; dirty=true; }
+      }
+    });
+    // migrate old route shape (placeIds -> stops)
+    state.routes.forEach(function(r){
+      if(!r.stops && r.placeIds){
+        r.stops=r.placeIds.map(function(id){ return {p:id}; });
+        delete r.placeIds; dirty=true;
+      }
+    });
+    return dirty;
+  }
+
+  function pinAt(x,y){
+    var thr=14/currentK;
+    for(var i=state.places.length-1;i>=0;i--){
+      var p=state.places[i];
+      var pt=projection([p.lng,p.lat]);
+      var dx=Math.abs(pt[0]-x); dx=Math.min(dx,W-dx);
+      var dy=pt[1]-y;
+      if(dx*dx+dy*dy<thr*thr) return p;
+    }
+    return null;
+  }
+
+  // ---------- pins ----------
+  function renderPins(){
+    var sel=pinLayer.selectAll('g.pin').data(state.places, function(d){ return d.id; });
+    var g=sel.enter().append('g').attr('class','pin');
+    var inner=g.append('g').attr('class','pin-inner');
+    inner.append('circle').attr('class','ring').attr('r',9).attr('fill','none').attr('stroke-width',1);
+    inner.append('circle').attr('class','dot').attr('r',4.6).attr('stroke-width',1.4);
+    inner.append('text').attr('class','lbl')
+      .attr('y',20).attr('text-anchor','middle')
+      .attr('font-family','var(--sans)').attr('font-size','10.5px').attr('font-weight','700')
+      .attr('fill', css('--ink'))
+      .attr('stroke', css('--land')).attr('stroke-width',3).attr('paint-order','stroke');
+    sel.exit().remove();
+
+    var all=pinLayer.selectAll('g.pin');
+    all.attr('transform', function(d){
+      var p=projection([d.lng,d.lat]);
+      return 'translate('+p[0]+','+p[1]+')';
+    });
+    all.select('circle.dot')
+      .attr('fill', function(d){ return TYPE[d.type].color; })
+      .attr('stroke','#FFFDF4');
+    all.select('circle.ring')
+      .attr('stroke', function(d){ return TYPE[d.type].color; })
+      .attr('stroke-dasharray', function(d){ return d.type==='wish'?'2.5,2.5':null; })
+      .attr('opacity', function(d){ return d.id===activePlaceId?1:.45; })
+      .attr('stroke-width', function(d){ return d.id===activePlaceId?1.8:1; });
+    all.select('text.lbl').text(function(d){ return d.name; });
+
+    // journey focus: dim unrelated pins
+    var focused=focusRouteId?state.routes.filter(function(r){return r.id===focusRouteId;})[0]:null;
+    var inJourney={};
+    if(focused) (focused.stops||[]).forEach(function(s){ if(s.p) inJourney[s.p]=true; });
+    all.attr('opacity', function(d){ return (focused && !inJourney[d.id]) ? .28 : 1; });
+
+    updateScaleDependents();
+    highlightRegions();
+    renderRoutes();
+  }
+
+  function updateScaleDependents(){
+    if(!pinLayer) return;
+    var s=1/currentK;
+    pinLayer.selectAll('g.pin .pin-inner').attr('transform','scale('+s+')');
+    if(linesG){
+      linesG.selectAll('path.halo').attr('stroke-width',3.4*s);
+      linesG.selectAll('path.line').attr('stroke-width',1.6*s)
+        .attr('stroke-dasharray',(6*s)+','+(5*s));
+      linesG.selectAll('path.fhalo').attr('stroke-width',4.2*s);
+      linesG.selectAll('path.fline').attr('stroke-width',2.2*s);
+      linesG.selectAll('g.stopnum .stopnum-inner').attr('transform','scale('+s+')');
+      linesG.selectAll('path.draftline').attr('stroke-width',1.8*s)
+        .attr('stroke-dasharray',(4*s)+','+(4*s));
+      linesG.selectAll('circle.waypt').attr('r',2.6*s).attr('stroke-width',1*s);
+    }
+    updateLabelVisibility();
+  }
+
+  // hide labels that would collide on screen; higher-rated / more-recorded pins win
+  function updateLabelVisibility(){
+    if(!pinLayer || !zoom) return;
+    var k=currentK, t=zoom.translate(), span=W*k;
+    var order=state.places.slice().sort(function(a,b){
+      return (b.rating||0)-(a.rating||0) || ((b.trips||[]).length-(a.trips||[]).length);
+    });
+    var kept=[], show={};
+    order.forEach(function(p){
+      var xy=projection([p.lng,p.lat]);
+      var sx=xy[0]*k+t[0], sy=xy[1]*k+t[1];
+      sx=((sx%span)+span)%span;
+      var halfW=Math.min(6.5*p.name.length+16, 90);
+      var ok=true;
+      for(var i=0;i<kept.length;i++){
+        var dx=Math.abs(kept[i][0]-sx); dx=Math.min(dx, span-dx);
+        if(dx < halfW+kept[i][2] && Math.abs(kept[i][1]-sy) < 26){ ok=false; break; }
+      }
+      if(ok){ kept.push([sx,sy,halfW]); show[p.id]=true; }
+    });
+    pinLayer.selectAll('g.pin text.lbl')
+      .attr('display', function(d){ return show[d.id]?null:'none'; });
+  }
+
+  function highlightRegions(){
+    var visited={};
+    state.places.forEach(function(p){
+      if(p.country && p.type!=='wish') visited[p.country]=true;
+    });
+    // datamaps paints countries with inline styles, so we must use .style() here
+    svg.selectAll('.datamaps-subunit').style('fill', function(d){
+      return visited[d.id]?css('--visited'):css('--land');
+    }).style('stroke', function(d){
+      return visited[d.id]?'#B00062':css('--land-stroke');
+    });
+    if(statesG){
+      statesG.selectAll('path').style('fill', function(d){
+        return visited['US-'+d.id]?css('--visited'):css('--land');
+      }).style('stroke', function(d){
+        return visited['US-'+d.id]?'#B00062':css('--land-stroke');
+      });
+    }
+  }
+
+  function goTo(lat,lng,k,dur){
+    var p=projection([lng,lat]);
+    var t=[W/2-p[0]*k, H/2-p[1]*k];
+    var span=W*k;
+    t[0]=t[0]-Math.round(t[0]/span)*span;
+    zoom.translate(t).scale(k);
+    currentK=k;
+    if(dur){
+      root.transition().duration(dur)
+        .attr('transform','translate('+t+')scale('+k+')')
+        .each('end', updateScaleDependents);
+    }else{
+      root.attr('transform','translate('+t+')scale('+k+')');
+    }
+    updateScaleDependents();
+  }
+
+  // ---------- routes ----------
+  function stopKey(s){
+    if(s.p) return 'p:'+s.p;
+    return 'w:'+s.ll[0].toFixed(3)+','+s.ll[1].toFixed(3);
+  }
+  function stopXY(s){
+    if(s.p){
+      var pl=getPlace(s.p);
+      if(!pl) return null;
+      return projection([pl.lng,pl.lat]);
+    }
+    return projection([s.ll[1],s.ll[0]]);
+  }
+  // draws each unique segment once (shared legs of different journeys collapse into one line)
+  function segmentsD(routeList){
+    var seen={}, d='';
+    routeList.forEach(function(r){
+      var pts=[], keys=[];
+      (r.stops||[]).forEach(function(s){
+        var xy=stopXY(s);
+        if(xy){ pts.push(xy); keys.push(stopKey(s)); }
+      });
+      for(var i=1;i<pts.length;i++){
+        var k=[keys[i-1],keys[i]].sort().join('|');
+        if(seen[k]) continue;
+        seen[k]=1;
+        var a=pts[i-1], b=pts[i];
+        var bx=b[0]+Math.round((a[0]-b[0])/W)*W;
+        d+='M'+a[0]+','+a[1]+'L'+bx+','+b[1];
+      }
+    });
+    return d;
+  }
+
+  function renderRoutes(){
+    if(!linesG) return;
+    if(focusRouteId && !state.routes.some(function(r){return r.id===focusRouteId;})){
+      focusRouteId=null;
+      $('journeyCard').classList.remove('show');
+    }
+    linesG.selectAll('g.saved').remove();
+    var g=linesG.insert('g',':first-child').attr('class','saved');
+    var focused=focusRouteId?state.routes.filter(function(r){return r.id===focusRouteId;})[0]:null;
+
+    var others=focused?state.routes.filter(function(r){return r.id!==focusRouteId;}):state.routes;
+    var d=segmentsD(others);
+    if(d){
+      g.append('path').attr('class','halo')
+        .attr('fill','none').attr('stroke',css('--paper'))
+        .attr('stroke-linecap','round').attr('stroke-linejoin','round')
+        .attr('opacity', focused?.3:.85).attr('d',d);
+      g.append('path').attr('class','line')
+        .attr('fill','none').attr('stroke',css('--ink'))
+        .attr('stroke-linecap','round').attr('stroke-linejoin','round')
+        .attr('opacity', focused?.18:1)
+        .attr('d',d);
+    }
+    if(focused){
+      var fd=segmentsD([focused]);
+      if(fd){
+        g.append('path').attr('class','fhalo')
+          .attr('fill','none').attr('stroke',css('--paper'))
+          .attr('stroke-linecap','round').attr('stroke-linejoin','round')
+          .attr('opacity',.9).attr('d',fd);
+        g.append('path').attr('class','fline')
+          .attr('fill','none').attr('stroke',css('--accent'))
+          .attr('stroke-linecap','round').attr('stroke-linejoin','round')
+          .attr('d',fd);
+      }
+      // numbered badges at pin stops (first visit order)
+      var n=0, seenPin={};
+      (focused.stops||[]).forEach(function(s){
+        if(!s.p) return;
+        var pl=getPlace(s.p); if(!pl) return;
+        n++;
+        if(seenPin[s.p]) return;
+        seenPin[s.p]=1;
+        var xy=projection([pl.lng,pl.lat]);
+        var bg=g.append('g').attr('class','stopnum')
+          .attr('transform','translate('+xy[0]+','+xy[1]+')');
+        var inner=bg.append('g').attr('class','stopnum-inner');
+        inner.append('circle').attr('cx',-12).attr('cy',-12).attr('r',7.5)
+          .attr('fill',css('--accent')).attr('stroke','#fff').attr('stroke-width',1.2);
+        inner.append('text').attr('x',-12).attr('y',-9)
+          .attr('text-anchor','middle')
+          .attr('font-family','var(--mono)').attr('font-size','8.5px').attr('font-weight','700')
+          .attr('fill','#fff').text(n);
+      });
+    }
+    updateScaleDependents();
+  }
+
+  function renderDraftLine(){
+    linesG.selectAll('g.draft').remove();
+    var g=linesG.append('g').attr('class','draft');
+    if(routeDraft.length>=2){
+      g.append('path').attr('class','draftline')
+        .attr('fill','none').attr('stroke',css('--accent'))
+        .attr('stroke-linecap','round').attr('stroke-linejoin','round')
+        .attr('d', segmentsD([{stops:routeDraft}]));
+    }
+    routeDraft.forEach(function(s){
+      if(s.p) return;
+      var xy=stopXY(s); if(!xy) return;
+      g.append('circle').attr('class','waypt')
+        .attr('cx',xy[0]).attr('cy',xy[1])
+        .attr('fill',css('--accent')).attr('stroke','#fff');
+    });
+    updateScaleDependents();
+  }
+
+  function updateRouteBar(){
+    $('routeMsg').innerHTML='핀 또는 빈 지도를 순서대로 탭 <b>'+routeDraft.length+'개 지점</b><br><span style="font-weight:400;color:var(--muted)">빈 곳을 탭하면 경유점이 생겨 선 모양을 다듬을 수 있어요</span>';
+  }
+  function enterRouteMode(editRoute){
+    if(READONLY) return;
+    if(state.places.length<2 && !editRoute){ toast('먼저 핀을 2개 이상 찍어야 여정을 만들 수 있어요'); return; }
+    exitJourney();
+    routeMode=true;
+    editingRouteId=editRoute?editRoute.id:null;
+    routeDraft=editRoute?editRoute.stops.slice():[];
+    document.body.classList.add('route-mode');
+    closeDrawer(); closeTimeline(); hidePopover();
+    updateRouteBar(); renderDraftLine();
+    $('routebar').classList.add('show');
+  }
+  function exitRouteMode(){
+    routeMode=false; routeDraft=[]; editingRouteId=null;
+    document.body.classList.remove('route-mode');
+    $('routebar').classList.remove('show');
+    $('routeSave').classList.remove('show');
+    linesG.selectAll('g.draft').remove();
+  }
+  $('routeToggle').addEventListener('click', function(){
+    if(routeMode) exitRouteMode(); else enterRouteMode(null);
+  });
+  $('routeUndo').addEventListener('click', function(){
+    routeDraft.pop(); updateRouteBar(); renderDraftLine();
+  });
+  $('routeCancel').addEventListener('click', exitRouteMode);
+  $('routeDone').addEventListener('click', function(){
+    var pinCount=routeDraft.filter(function(s){return s.p;}).length;
+    if(routeDraft.length<2 || pinCount<1){ toast('핀을 포함해 2개 이상 지점을 연결해주세요'); return; }
+    var existing=editingRouteId?state.routes.filter(function(r){return r.id===editingRouteId;})[0]:null;
+    $('rsName').value=existing?existing.name:'';
+    $('rsStart').value=(existing&&existing.start)?existing.start:'';
+    $('routeSave').classList.add('show');
+    setTimeout(function(){ $('rsName').focus(); },30);
+  });
+  $('rsCancel').addEventListener('click', function(){ $('routeSave').classList.remove('show'); });
+  $('rsName').addEventListener('keydown', function(e){ if(e.key==='Enter') $('rsSave').click(); });
+  $('rsSave').addEventListener('click', function(){
+    var name=$('rsName').value.trim()||'새 여정';
+    var start=$('rsStart').value||'';
+    var existing=editingRouteId?state.routes.filter(function(r){return r.id===editingRouteId;})[0]:null;
+    var saved;
+    if(existing){
+      existing.name=name; existing.start=start; existing.stops=routeDraft.slice();
+      saved=existing;
+    }else{
+      saved={ id:uid(), name:name, start:start, stops:routeDraft.slice() };
+      state.routes.push(saved);
+    }
+    $('routeSave').classList.remove('show');
+    saveData(); exitRouteMode();
+    renderRoutes(); renderStatsIndex();
+    toast('여정이 저장됐어요');
+    focusJourney(saved.id);
+  });
+
+  // ---------- journey focus mode ----------
+  function addMonths(ym, n){
+    var p=ym.split('-');
+    var d=new Date(+p[0], +p[1]-1+n, 1);
+    var m=d.getMonth()+1;
+    return d.getFullYear()+'-'+(m<10?'0':'')+m;
+  }
+  // records at a stop that fall within the journey window (journey month ~ +3 months)
+  function journeyTripsFor(route, place){
+    if(!route.start) return [];
+    var from=dateCmp(route.start);
+    var to=dateCmp(addMonths(route.start,4));
+    return (place.trips||[]).filter(function(t){
+      var s=dateCmp(t.start||'');
+      return s>=from && s<to;
+    }).sort(function(a,b){ return dateCmp(a.start||'').localeCompare(dateCmp(b.start||'')); });
+  }
+  function focusJourney(id){
+    var r=state.routes.filter(function(x){return x.id===id;})[0];
+    if(!r) return;
+    focusRouteId=id;
+    closeTimeline(); closeDrawer(); closeStats();
+    $('cartouche').classList.remove('open');
+
+    $('jcName').textContent=r.name;
+    $('jcDate').textContent=r.start?fmtDate(r.start):'시기 미정';
+    var n=0, html='';
+    (r.stops||[]).forEach(function(s){
+      if(!s.p) return;
+      var pl=getPlace(s.p); if(!pl) return;
+      n++;
+      html+='<button data-place="'+pl.id+'"><span class="num">'+n+'</span><span>'+esc(pl.name)+'</span></button>';
+      journeyTripsFor(r, pl).forEach(function(t){
+        var line=t.title || (t.note?t.note.split('\n')[0]:'');
+        if(line.length>34) line=line.slice(0,34)+'…';
+        html+='<div class="rec"><span class="rd">'+esc(fmtRange(t))+'</span>'+(line?' '+esc(line):'')+'</div>';
+      });
+    });
+    $('jcStops').innerHTML=html;
+    $('journeyCard').classList.add('show');
+
+    renderRoutes(); renderPins();
+    fitToJourney(r);
+  }
+  function exitJourney(){
+    if(!focusRouteId) return;
+    focusRouteId=null;
+    $('journeyCard').classList.remove('show');
+    renderRoutes(); renderPins();
+  }
+  function fitToJourney(r){
+    var xs=[], ys=[];
+    (r.stops||[]).forEach(function(s){
+      var xy=stopXY(s);
+      if(xy){ xs.push(xy[0]); ys.push(xy[1]); }
+    });
+    if(!xs.length) return;
+    var minX=Math.min.apply(null,xs), maxX=Math.max.apply(null,xs);
+    var minY=Math.min.apply(null,ys), maxY=Math.max.apply(null,ys);
+    var cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+    var dx=Math.max(maxX-minX, 4), dy=Math.max(maxY-minY, 4);
+    var k=Math.max(2, Math.min(40, 0.62*Math.min(W/dx, H/dy)));
+    var ll=projection.invert([cx,cy]);
+    if(ll) goTo(ll[1], normLng(ll[0]), k, 650);
+  }
+  $('jcClose').addEventListener('click', exitJourney);
+  $('jcDelete').addEventListener('click', function(){
+    var r=state.routes.filter(function(x){return x.id===focusRouteId;})[0];
+    if(!r) return;
+    if(confirm('여정 "'+r.name+'"을(를) 삭제할까요? (핀과 기록은 남아요)')){
+      state.routes=state.routes.filter(function(x){return x.id!==r.id;});
+      saveData(); exitJourney(); renderStatsIndex();
+    }
+  });
+  $('jcEdit').addEventListener('click', function(){
+    var r=state.routes.filter(function(x){return x.id===focusRouteId;})[0];
+    if(!r) return;
+    exitJourney();
+    enterRouteMode(r);
+  });
+  $('jcStops').addEventListener('click', function(e){
+    var btn=e.target.closest('button[data-place]'); if(!btn) return;
+    var p=getPlace(btn.getAttribute('data-place')); if(!p) return;
+    goTo(p.lat,p.lng,Math.max(currentK,7),650);
+  });
+
+  // ---------- search ----------
+  var searchSel=-1, searchHits=[];
+  $('searchBtn').addEventListener('click', function(){
+    $('searchBox').classList.add('open');
+    setTimeout(function(){ $('searchInput').focus(); },30);
+  });
+  $('searchInput').addEventListener('input', runSearch);
+  $('searchInput').addEventListener('keydown', function(e){
+    if(e.key==='ArrowDown'){ searchSel=Math.min(searchSel+1,searchHits.length-1); paintSel(); e.preventDefault(); }
+    else if(e.key==='ArrowUp'){ searchSel=Math.max(searchSel-1,0); paintSel(); e.preventDefault(); }
+    else if(e.key==='Enter'){ if(searchHits[Math.max(searchSel,0)]) pickCity(searchHits[Math.max(searchSel,0)]); }
+    else if(e.key==='Escape'){ closeSearch(); this.blur(); }
+  });
+  function paintSel(){
+    var btns=$('searchResults').querySelectorAll('button');
+    Array.prototype.forEach.call(btns,function(b,i){ b.classList.toggle('sel',i===searchSel); });
+  }
+  function closeSearch(){
+    $('searchResults').classList.remove('show');
+    $('searchBox').classList.remove('open');
+  }
+  function runSearch(){
+    var q=$('searchInput').value.trim().toLowerCase();
+    var res=$('searchResults');
+    searchSel=-1; searchHits=[];
+    if(!q){ res.classList.remove('show'); return; }
+    for(var i=0;i<CITIES.length&&searchHits.length<8;i++){
+      var c=CITIES[i];
+      if(c[0].toLowerCase().indexOf(q)>-1 || c[1].toLowerCase().indexOf(q)>-1) searchHits.push(c);
+    }
+    res.innerHTML = searchHits.length
+      ? searchHits.map(function(c,i){
+          return '<button data-i="'+i+'"><span>'+esc(c[0])+'</span><span class="en">'+esc(c[1])+' · '+esc(c[2])+'</span></button>';
+        }).join('')
+      : '<div class="none">검색 결과가 없어요. 지도를 직접 클릭해 핀을 찍을 수도 있어요.</div>';
+    res.classList.add('show');
+  }
+  $('searchResults').addEventListener('click', function(e){
+    var btn=e.target.closest('button[data-i]'); if(!btn) return;
+    pickCity(searchHits[+btn.getAttribute('data-i')]);
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('.search')) closeSearch();
+  });
+  function pickCity(c){
+    closeSearch();
+    $('searchInput').value='';
+    var lat=c[3], lng=c[4];
+    var existing=null;
+    state.places.forEach(function(p){
+      if(Math.abs(p.lat-lat)<0.2 && Math.abs(normLng(p.lng-lng))<0.2) existing=p;
+    });
+    goTo(lat,lng,40,650);
+    if(existing){ openDrawer(existing.id); return; }
+    if(READONLY) return;
+    setTimeout(function(){
+      var geo=regionAtLL(lat,lng);
+      pending={ lat:lat, lng:lng, country:geo?geo.id:null, countryName:geo?geo.name:null, type:'trip', prefill:c[0] };
+      showPopover(W/2, H/2);
+    },700);
+  }
+
+  // ---------- chips helper ----------
+  function bindChips(el,onPick,attr){
+    attr=attr||'data-type';
+    el.addEventListener('click', function(e){
+      var c=e.target.closest('.chip'); if(!c) return;
+      el.querySelectorAll('.chip').forEach(function(x){ x.classList.remove('on'); });
+      c.classList.add('on');
+      onPick(c.getAttribute(attr));
+    });
+  }
+  function setChips(el,val,attr){
+    attr=attr||'data-type';
+    el.querySelectorAll('.chip').forEach(function(x){
+      x.classList.toggle('on', x.getAttribute(attr)===val);
+    });
+  }
+
+  // ---------- popover ----------
+  function showPopover(x,y){
+    var pop=$('popover');
+    $('popCountry').textContent=pending.countryName||'새 장소';
+    $('popName').value=pending.prefill||'';
+    setChips($('popChips'), pending.type);
+    pop.classList.add('show');
+    var pw=242, ph=176;
+    pop.style.left=Math.min(Math.max(8,x-pw/2),W-pw-8)+'px';
+    pop.style.top =Math.min(Math.max(8,y+14),H-ph-8)+'px';
+    setTimeout(function(){ $('popName').focus(); },30);
+  }
+  function hidePopover(){ $('popover').classList.remove('show'); }
+  bindChips($('popChips'), function(t){ if(pending) pending.type=t; });
+  $('popCancel').addEventListener('click', function(){ hidePopover(); pending=null; });
+  $('popAdd').addEventListener('click', addPlace);
+  $('popName').addEventListener('keydown', function(e){
+    if(e.key==='Enter') addPlace();
+    if(e.key==='Escape'){ hidePopover(); pending=null; }
+  });
+  function addPlace(){
+    var name=$('popName').value.trim();
+    if(!name){ $('popName').focus(); return; }
+    if(!pending) return;
+    var place={
+      id:uid(), name:name, type:pending.type, rating:0,
+      lat:pending.lat, lng:pending.lng,
+      country:pending.country, countryName:pending.countryName,
+      trips:[]
+    };
+    state.places.push(place);
+    pending=null; hidePopover();
+    saveData(); renderAll();
+    openDrawer(place.id, place.type!=='wish');
+  }
+
+  // ---------- stars ----------
+  function renderStars(el,val,interactive,onSet){
+    el.innerHTML='';
+    for(var i=1;i<=5;i++){
+      var b=document.createElement('b');
+      b.textContent='★';
+      if(i<=val) b.classList.add('on');
+      if(interactive){
+        (function(n){ b.addEventListener('click', function(){ onSet(n===val?0:n); }); })(i);
+      }
+      el.appendChild(b);
+    }
+    el.classList.toggle('readonly',!interactive);
+  }
+
+  // ---------- drawer ----------
+  function getPlace(id){
+    for(var i=0;i<state.places.length;i++) if(state.places[i].id===id) return state.places[i];
+    return null;
+  }
+  function openDrawer(id,openForm){
+    if(routeMode) return;
+    activePlaceId=id;
+    var p=getPlace(id); if(!p) return;
+    $('dCountry').textContent=p.countryName||'Somewhere';
+    $('dName').textContent=p.name;
+    $('dCoords').textContent=fmtLL(p.lat,p.lng);
+    setChips($('dChips'), p.type);
+    refreshStars(p);
+    renderTrips(); hideTripForm();
+    $('drawer').classList.add('open');
+    $('drawer').setAttribute('aria-hidden','false');
+    renderPins();
+    if(openForm) showTripForm();
+  }
+  function refreshStars(p){
+    renderStars($('dStars'), p.rating, !READONLY, function(v){
+      p.rating=v; saveData(); refreshStars(p); renderStatsIndex();
+    });
+  }
+  function closeDrawer(){
+    $('drawer').classList.remove('open');
+    $('drawer').setAttribute('aria-hidden','true');
+    activePlaceId=null; hideTripForm(); renderPins();
+  }
+  $('drawerClose').addEventListener('click', closeDrawer);
+
+  bindChips($('dChips'), function(t){
+    if(READONLY) return;
+    var p=getPlace(activePlaceId); if(!p) return;
+    p.type=t; saveData(); renderAll();
+  });
+
+  function renderTrips(){
+    var p=getPlace(activePlaceId);
+    var box=$('tripList');
+    if(!p){ box.innerHTML=''; return; }
+    var trips=p.trips.slice().sort(function(a,b){
+      return dateCmp(b.start||'').localeCompare(dateCmp(a.start||''));
+    });
+    if(!trips.length){
+      box.innerHTML='<div class="no-trips">아직 기록이 없어요.<br>위의 <b>기록 추가</b>로 첫 페이지를 남겨보세요.</div>';
+      return;
+    }
+    box.innerHTML=trips.map(function(t){
+      var photos=(t.photos||[]).map(function(pid){
+        return '<img data-photo="'+pid+'" alt="사진">';
+      }).join('');
+      return '<article class="trip" data-id="'+t.id+'">'+
+        '<div class="t-date">'+esc(fmtRange(t))+'</div>'+
+        (t.title?'<div class="t-title">'+esc(t.title)+'</div>':'')+
+        (t.note?'<div class="t-note">'+esc(t.note)+'</div>':'')+
+        (photos?'<div class="t-photos">'+photos+'</div>':'')+
+        '<div class="t-actions">'+
+          '<button class="btn tiny ghost" data-act="edit">수정</button>'+
+          '<button class="btn tiny ghost danger" data-act="del">삭제</button>'+
+        '</div></article>';
+    }).join('');
+    hydratePhotos(box);
+  }
+
+  function hydratePhotos(container){
+    Array.prototype.forEach.call(container.querySelectorAll('img[data-photo]'), function(img){
+      loadPhoto(img.getAttribute('data-photo')).then(function(url){
+        if(url) img.src=url; else img.style.display='none';
+      });
+    });
+  }
+
+  $('tripList').addEventListener('click', function(e){
+    var img=e.target.closest('img[data-photo]');
+    if(img && img.src){ $('lightboxImg').src=img.src; $('lightbox').classList.add('show'); return; }
+    var btn=e.target.closest('button[data-act]'); if(!btn) return;
+    var id=btn.closest('.trip').getAttribute('data-id');
+    var p=getPlace(activePlaceId); if(!p) return;
+    var t=p.trips.filter(function(x){return x.id===id;})[0]; if(!t) return;
+    if(btn.getAttribute('data-act')==='del'){
+      if(confirm('이 기록을 삭제할까요?')){
+        (t.photos||[]).forEach(deletePhoto);
+        p.trips=p.trips.filter(function(x){return x.id!==id;});
+        saveData(); renderTrips(); renderStatsIndex();
+      }
+    }else{
+      editingTripId=id;
+      setDateMode((t.start||'').length===7?'month':'day');
+      $('tfTitle').value=t.title||'';
+      $('tfStart').value=t.start||'';
+      $('tfEnd').value=t.end||'';
+      $('tfNote').value=t.note||'';
+      formPhotos=(t.photos||[]).map(function(pid){ return {id:pid,isNew:false}; });
+      removedPhotos=[];
+      renderPhotoStrip();
+      formPhotos.forEach(function(fp){
+        loadPhoto(fp.id).then(function(url){ fp.url=url; renderPhotoStrip(); });
+      });
+      $('tripForm').classList.add('show');
+      $('tfTitle').focus();
+    }
+  });
+  $('lightbox').addEventListener('click', function(){ $('lightbox').classList.remove('show'); });
+
+  // ---------- trip form + photos ----------
+  var formPhotos=[], removedPhotos=[];
+  var dateModeVal='day';
+
+  function setDateMode(mode){
+    dateModeVal=mode;
+    setChips($('dateMode'), mode, 'data-mode');
+    var type=mode==='month'?'month':'date';
+    ['tfStart','tfEnd'].forEach(function(id){
+      var el=$(id);
+      var v=el.value;
+      el.type=type;
+      // convert value between formats where possible
+      if(v){
+        if(mode==='month' && v.length===10) el.value=v.slice(0,7);
+        else if(mode==='day' && v.length===7) el.value=v+'-01';
+        else el.value=v;
+      }
+    });
+  }
+  bindChips($('dateMode'), function(m){ setDateMode(m); }, 'data-mode');
+
+  function renderPhotoStrip(){
+    var strip=$('photoStrip');
+    strip.querySelectorAll('.ph').forEach(function(n){ n.remove(); });
+    var addBtn=$('addPhotoBtn');
+    formPhotos.forEach(function(fp,idx){
+      var d=document.createElement('div'); d.className='ph';
+      var img=document.createElement('img');
+      if(fp.url) img.src=fp.url;
+      var rm=document.createElement('button');
+      rm.className='rm'; rm.textContent='✕'; rm.type='button';
+      rm.addEventListener('click', function(){
+        if(!fp.isNew) removedPhotos.push(fp.id);
+        formPhotos.splice(idx,1);
+        renderPhotoStrip();
+      });
+      d.appendChild(img); d.appendChild(rm);
+      strip.insertBefore(d,addBtn);
+    });
+  }
+
+  $('addPhotoBtn').addEventListener('click', function(){ $('photoInput').click(); });
+  $('photoInput').addEventListener('change', function(){
+    var files=Array.prototype.slice.call(this.files||[]);
+    this.value='';
+    files.forEach(function(f){
+      if(!/^image\//.test(f.type)) return;
+      resizeImage(f).then(function(url){
+        if(!url){ toast('이미지를 읽을 수 없었어요'); return; }
+        formPhotos.push({id:uid(), url:url, isNew:true});
+        renderPhotoStrip();
+      });
+    });
+  });
+
+  function resizeImage(file){
+    return new Promise(function(res){
+      var reader=new FileReader();
+      reader.onerror=function(){ res(null); };
+      reader.onload=function(){
+        var img=new Image();
+        img.onerror=function(){ res(null); };
+        img.onload=function(){
+          var MAX=1000, w=img.width, h=img.height;
+          if(w>MAX||h>MAX){
+            if(w>=h){ h=Math.round(h*MAX/w); w=MAX; }
+            else{ w=Math.round(w*MAX/h); h=MAX; }
+          }
+          var c=document.createElement('canvas'); c.width=w; c.height=h;
+          var ctx=c.getContext('2d');
+          ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h);
+          ctx.drawImage(img,0,0,w,h);
+          res(c.toDataURL('image/jpeg',0.72));
+        };
+        img.src=reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function showTripForm(){
+    editingTripId=null;
+    setDateMode('day');
+    $('tfTitle').value=''; $('tfStart').value=''; $('tfEnd').value=''; $('tfNote').value='';
+    formPhotos=[]; removedPhotos=[];
+    renderPhotoStrip();
+    $('tripForm').classList.add('show');
+    setTimeout(function(){ $('tfStart').focus(); },50);
+  }
+  function hideTripForm(){
+    $('tripForm').classList.remove('show');
+    editingTripId=null; formPhotos=[]; removedPhotos=[];
+  }
+  $('addTripBtn').addEventListener('click', showTripForm);
+  $('tfCancel').addEventListener('click', hideTripForm);
+
+  $('tfSave').addEventListener('click', function(){
+    var p=getPlace(activePlaceId); if(!p) return;
+    var start=$('tfStart').value, end=$('tfEnd').value;
+    if(!start){ toast(dateModeVal==='month'?'시작 월을 선택해주세요':'시작일을 선택해주세요'); $('tfStart').focus(); return; }
+    if(end && dateCmp(end)<dateCmp(start)){ toast('종료가 시작보다 빨라요'); return; }
+
+    formPhotos.forEach(function(fp){ if(fp.isNew&&fp.url) savePhoto(fp.id,fp.url); });
+    removedPhotos.forEach(deletePhoto);
+
+    var data={
+      title:$('tfTitle').value.trim(),
+      start:start, end:end,
+      note:$('tfNote').value.trim(),
+      photos:formPhotos.map(function(fp){ return fp.id; })
+    };
+    if(editingTripId){
+      var t=p.trips.filter(function(x){return x.id===editingTripId;})[0];
+      if(t){ t.title=data.title; t.start=data.start; t.end=data.end; t.note=data.note; t.photos=data.photos; }
+    }else{
+      data.id=uid();
+      p.trips.push(data);
+    }
+    saveData(); hideTripForm(); renderTrips(); renderStatsIndex();
+  });
+
+  $('renameBtn').addEventListener('click', function(){
+    var p=getPlace(activePlaceId); if(!p) return;
+    var name=prompt('장소 이름', p.name);
+    if(name&&name.trim()){ p.name=name.trim(); $('dName').textContent=p.name; saveData(); renderAll(); }
+  });
+  $('deletePlaceBtn').addEventListener('click', function(){
+    var p=getPlace(activePlaceId); if(!p) return;
+    if(confirm('"'+p.name+'" 핀과 모든 기록을 삭제할까요?')){
+      p.trips.forEach(function(t){ (t.photos||[]).forEach(deletePhoto); });
+      state.places=state.places.filter(function(x){return x.id!==p.id;});
+      state.routes.forEach(function(r){
+        r.stops=(r.stops||[]).filter(function(s){ return s.p!==p.id; });
+      });
+      state.routes=state.routes.filter(function(r){
+        return r.stops.length>=2 && r.stops.some(function(s){return s.p;});
+      });
+      saveData(); closeDrawer(); renderAll();
+    }
+  });
+
+  // ---------- cartouche / index ----------
+  $('indexToggle').addEventListener('click', function(){
+    $('cartouche').classList.toggle('open');
+  });
+
+  function typeDot(t){
+    return '<i class="tdot" style="background:'+TYPE[t].color+'"></i>';
+  }
+
+  function renderStatsIndex(){
+    var countries={}, tripCount=0;
+    state.places.forEach(function(p){
+      if(p.country&&p.type!=='wish'){
+        countries[p.country.slice(0,3)==='US-'?'USA':p.country]=true;
+      }
+      tripCount+=(p.trips||[]).length;
+    });
+    $('stats').textContent=Object.keys(countries).length+'개국 · '+state.places.length+'곳 · '+tripCount+'번의 기록';
+
+    var idx=$('placeIndex');
+    if(!state.places.length){
+      idx.innerHTML='<div class="empty-note">아직 핀이 없어요. 지도를 클릭하거나 도시를 검색해보세요.</div>';
+      return;
+    }
+    var html='<div class="idx-head">핀</div>';
+    var sorted=state.places.slice().sort(function(a,b){ return a.name.localeCompare(b.name,'ko'); });
+    html+=sorted.map(function(p){
+      var stars=p.rating?' '+'★'.repeat(p.rating):'';
+      return '<div class="row"><button class="row-main" data-place="'+p.id+'">'+typeDot(p.type)+
+        '<em>'+esc(p.name)+'</em></button>'+
+        '<span class="cnt">'+(p.trips||[]).length+'건'+esc(stars)+'</span></div>';
+    }).join('');
+    if(state.routes.length){
+      html+='<div class="idx-head">여정</div>';
+      var rsorted=state.routes.slice().sort(function(a,b){
+        return dateCmp(b.start||'0000').localeCompare(dateCmp(a.start||'0000'));
+      });
+      html+=rsorted.map(function(r){
+        var when=r.start?fmtDate(r.start):'';
+        return '<div class="row"><button class="row-main" data-route="'+r.id+'">'+
+          '<em>'+esc(r.name)+'</em></button>'+
+          '<span class="cnt">'+(when?when+' · ':'')+r.stops.filter(function(s){return s.p;}).length+'곳</span>'+
+          '<button class="mini" data-editroute="'+r.id+'" title="여정 수정">✎</button>'+
+          '<button class="mini" data-rmroute="'+r.id+'" title="여정 삭제">✕</button></div>';
+      }).join('');
+    }
+    html+='<div class="idx-head bk-row">백업</div>'+
+      '<div class="row bk-row"><button class="row-main" data-backup="export"><em>내보내기 (JSON 저장)</em></button></div>'+
+      '<div class="row bk-row"><button class="row-main" data-backup="import"><em>가져오기</em></button></div>';
+    idx.innerHTML=html;
+  }
+
+  $('placeIndex').addEventListener('click', function(e){
+    var bk=e.target.closest('[data-backup]');
+    if(bk){
+      if(bk.getAttribute('data-backup')==='export') exportBackup();
+      else $('importInput').click();
+      return;
+    }
+    var rm=e.target.closest('[data-rmroute]');
+    if(rm){
+      var rid=rm.getAttribute('data-rmroute');
+      var r=state.routes.filter(function(x){return x.id===rid;})[0];
+      if(r&&confirm('여정 "'+r.name+'"을(를) 삭제할까요? (핀과 기록은 남아요)')){
+        state.routes=state.routes.filter(function(x){return x.id!==rid;});
+        saveData(); renderRoutes(); renderStatsIndex();
+      }
+      return;
+    }
+    var ed=e.target.closest('[data-editroute]');
+    if(ed){
+      var route=state.routes.filter(function(x){return x.id===ed.getAttribute('data-editroute');})[0];
+      if(route) enterRouteMode(route);
+      return;
+    }
+    var pb=e.target.closest('button[data-place]');
+    if(pb){
+      var p=getPlace(pb.getAttribute('data-place')); if(!p) return;
+      goTo(p.lat,p.lng,Math.max(currentK,6),650);
+      openDrawer(p.id);
+      return;
+    }
+    var rb=e.target.closest('button[data-route]');
+    if(rb){ focusJourney(rb.getAttribute('data-route')); }
+  });
+
+  function renderAll(){ renderPins(); renderStatsIndex(); }
+
+  // ---------- stats (연말결산) ----------
+  var statsYear='all';
+  $('statsToggle').addEventListener('click', function(){
+    closeTimeline(); exitJourney();
+    renderYearChips();
+    renderStats();
+    $('statsPanel').classList.add('open');
+    $('statsPanel').setAttribute('aria-hidden','false');
+  });
+  $('statsClose').addEventListener('click', closeStats);
+  function closeStats(){
+    $('statsPanel').classList.remove('open');
+    $('statsPanel').setAttribute('aria-hidden','true');
+  }
+  function allYears(){
+    var ys={};
+    state.places.forEach(function(p){
+      (p.trips||[]).forEach(function(t){ if(t.start) ys[t.start.slice(0,4)]=1; });
+    });
+    state.routes.forEach(function(r){ if(r.start) ys[r.start.slice(0,4)]=1; });
+    return Object.keys(ys).sort().reverse();
+  }
+  function renderYearChips(){
+    var years=allYears();
+    if(statsYear!=='all' && years.indexOf(statsYear)<0) statsYear='all';
+    var el=$('yearChips');
+    el.innerHTML='<button class="chip'+(statsYear==='all'?' on':'')+'" data-year="all">전체</button>'+
+      years.map(function(y){
+        return '<button class="chip'+(statsYear===y?' on':'')+'" data-year="'+y+'">'+y+'</button>';
+      }).join('');
+  }
+  $('yearChips').addEventListener('click', function(e){
+    var c=e.target.closest('.chip'); if(!c) return;
+    statsYear=c.getAttribute('data-year');
+    renderYearChips(); renderStats();
+  });
+
+  function tripDays(t){
+    if(!t.start || t.start.length!==10) return null;   // month-only: unknown length
+    if(!t.end) return 1;
+    var a=new Date(t.start), b=new Date(t.end);
+    var d=Math.round((b-a)/86400000)+1;
+    return d>0?d:1;
+  }
+  function countryFirstYears(){
+    var first={};
+    state.places.forEach(function(p){
+      if(!p.country || p.type==='wish') return;
+      var key=p.country.slice(0,3)==='US-'?'USA':p.country;
+      (p.trips||[]).forEach(function(t){
+        if(!t.start) return;
+        var y=t.start.slice(0,4);
+        if(!first[key] || y<first[key]) first[key]=y;
+      });
+    });
+    return first;
+  }
+  function renderStats(){
+    var y=statsYear;
+    var entries=[];
+    state.places.forEach(function(p){
+      (p.trips||[]).forEach(function(t){
+        if(!t.start) return;
+        if(y==='all' || t.start.slice(0,4)===y) entries.push({p:p,t:t});
+      });
+    });
+    var body=$('statsBody');
+    if(!entries.length){
+      body.innerHTML='<div class="tl-empty">'+(y==='all'?'아직 기록이 없어요.':y+'년의 기록이 없어요.')+'</div>';
+      return;
+    }
+    var placeSet={}, countrySet={}, days=0, unknownDays=0, photos=0, visits={};
+    entries.forEach(function(e){
+      placeSet[e.p.id]=1;
+      if(e.p.country && e.p.type!=='wish') countrySet[e.p.country.slice(0,3)==='US-'?'USA':e.p.country]=1;
+      var d=tripDays(e.t);
+      if(d==null) unknownDays++; else days+=d;
+      photos+=(e.t.photos||[]).length;
+      visits[e.p.id]=(visits[e.p.id]||0)+1;
+    });
+    var journeys=state.routes.filter(function(r){
+      return r.start && (y==='all' || r.start.slice(0,4)===y);
+    });
+
+    var html='<div class="stat-grid">'+
+      '<div class="stat"><div class="v">'+Object.keys(countrySet).length+'<small>개국</small></div><div class="l">방문한 나라</div></div>'+
+      '<div class="stat"><div class="v">'+Object.keys(placeSet).length+'<small>곳</small></div><div class="l">방문한 장소</div></div>'+
+      '<div class="stat"><div class="v">'+days+'<small>일'+(unknownDays?'+':'')+'</small></div><div class="l">길 위에서 보낸 날'+(unknownDays?' (월 단위 기록 '+unknownDays+'건 제외)':'')+'</div></div>'+
+      '<div class="stat"><div class="v">'+entries.length+'<small>건</small></div><div class="l">남긴 기록</div></div>'+
+      '<div class="stat"><div class="v">'+photos+'<small>장</small></div><div class="l">사진</div></div>'+
+      '<div class="stat"><div class="v">'+journeys.length+'<small>개</small></div><div class="l">여정</div></div>'+
+      '</div>';
+
+    // 최다 방문
+    var top=Object.keys(visits).map(function(id){ return [getPlace(id), visits[id]]; })
+      .filter(function(x){ return x[0]; })
+      .sort(function(a,b){ return b[1]-a[1]; }).slice(0,5);
+    if(top.length){
+      html+='<div class="stat-sec"><div class="sh">최다 방문</div>'+
+        top.map(function(x){
+          return '<div class="sr"><span>'+typeDot(x[0].type)+' '+esc(x[0].name)+'</span><span class="sv">'+x[1]+'회</span></div>';
+        }).join('')+'</div>';
+    }
+
+    // 새로 밟은 나라 (해당 연도가 첫 방문인 나라)
+    if(y!=='all'){
+      var first=countryFirstYears();
+      var newC=Object.keys(first).filter(function(c){ return first[c]===y; });
+      if(newC.length){
+        var names={};
+        state.places.forEach(function(p){
+          if(p.country) names[p.country.slice(0,3)==='US-'?'USA':p.country]=p.country.slice(0,3)==='US-'?'미국':(p.countryName||p.country);
+        });
+        html+='<div class="stat-sec"><div class="sh">처음 밟은 나라</div>'+
+          newC.map(function(c){ return '<div class="sr"><span>'+esc(names[c]||c)+'</span><span class="sv">NEW</span></div>'; }).join('')+'</div>';
+      }
+    }
+
+    // 별점 높은 곳
+    var rated=Object.keys(placeSet).map(getPlace).filter(function(p){ return p && p.rating>=4; })
+      .sort(function(a,b){ return b.rating-a.rating; }).slice(0,5);
+    if(rated.length){
+      html+='<div class="stat-sec"><div class="sh">올해의 장소</div>'+
+        rated.map(function(p){
+          return '<div class="sr"><span>'+esc(p.name)+'</span><span class="sv">'+'★'.repeat(p.rating)+'</span></div>';
+        }).join('')+'</div>';
+    }
+
+    html+='<div class="stat-note">일수는 일 단위로 기록된 여행만 합산해요. 여정은 시기가 입력된 것만 세요.</div>';
+    body.innerHTML=html;
+  }
+
+  // ---------- timeline ----------
+  $('timelineToggle').addEventListener('click', function(){
+    closeStats();
+    renderTimeline();
+    $('timeline').classList.add('open');
+    $('timeline').setAttribute('aria-hidden','false');
+  });
+  $('timelineClose').addEventListener('click', closeTimeline);
+  function closeTimeline(){
+    $('timeline').classList.remove('open');
+    $('timeline').setAttribute('aria-hidden','true');
+  }
+  function renderTimeline(){
+    var entries=[];
+    state.places.forEach(function(p){
+      (p.trips||[]).forEach(function(t){ entries.push({kind:'trip', place:p, trip:t, sort:dateCmp(t.start||'')}); });
+    });
+    state.routes.forEach(function(r){
+      if(r.start) entries.push({kind:'journey', route:r, sort:dateCmp(r.start)});
+    });
+    entries.sort(function(a,b){ return b.sort.localeCompare(a.sort); });
+    var body=$('tlBody');
+    if(!entries.length){
+      body.innerHTML='<div class="tl-empty">아직 기록이 없어요.<br>핀을 찍고 첫 기록을 남기면 여기에 시간순으로 쌓여요.</div>';
+      return;
+    }
+    var html='', lastYear=null;
+    entries.forEach(function(e){
+      var year=(e.sort||'????').slice(0,4);
+      if(year!==lastYear){ html+='<div class="tl-year">'+esc(year)+'</div>'; lastYear=year; }
+      if(e.kind==='journey'){
+        var r=e.route;
+        var stops=r.stops.filter(function(s){return s.p;}).length;
+        html+='<button class="tl-item" data-journey="'+r.id+'">'+
+          '<div class="tl-date">'+esc(fmtDate(r.start))+'</div>'+
+          '<div class="tl-place"><span style="color:var(--accent);font-family:var(--mono)">⟶</span>'+esc(r.name)+'</div>'+
+          '<div class="tl-sub">여정 · '+stops+'곳</div>'+
+          '</button>';
+        return;
+      }
+      var subs=[];
+      if(e.place.rating) subs.push('★'.repeat(e.place.rating));
+      if((e.trip.photos||[]).length) subs.push('사진 '+e.trip.photos.length+'장');
+      html+='<button class="tl-item" data-place="'+e.place.id+'">'+
+        '<div class="tl-date">'+esc(fmtRange(e.trip))+'</div>'+
+        '<div class="tl-place">'+typeDot(e.place.type)+esc(e.place.name)+'</div>'+
+        (e.trip.title?'<div class="tl-title">'+esc(e.trip.title)+'</div>':'')+
+        (subs.length?'<div class="tl-sub">'+esc(subs.join(' · '))+'</div>':'')+
+        '</button>';
+    });
+    body.innerHTML=html;
+  }
+  $('tlBody').addEventListener('click', function(e){
+    var jb=e.target.closest('.tl-item[data-journey]');
+    if(jb){ focusJourney(jb.getAttribute('data-journey')); return; }
+    var btn=e.target.closest('.tl-item[data-place]'); if(!btn) return;
+    var p=getPlace(btn.getAttribute('data-place')); if(!p) return;
+    closeTimeline();
+    goTo(p.lat,p.lng,Math.max(currentK,6),650);
+    openDrawer(p.id);
+  });
+
+  // ---------- zoom buttons ----------
+  function zoomBy(f){
+    var k=Math.max(1,Math.min(120,currentK*f));
+    var t=zoom.translate();
+    var cx=W/2, cy=H/2;
+    var nt=[cx-(cx-t[0])*(k/currentK), cy-(cy-t[1])*(k/currentK)];
+    var span=W*k;
+    nt[0]=nt[0]-Math.round(nt[0]/span)*span;
+    zoom.translate(nt).scale(k);
+    currentK=k;
+    root.transition().duration(250)
+      .attr('transform','translate('+nt+')scale('+k+')')
+      .each('end', updateScaleDependents);
+    updateScaleDependents();
+  }
+  $('zoomIn').addEventListener('click', function(){ zoomBy(1.7); });
+  $('zoomOut').addEventListener('click', function(){ zoomBy(1/1.7); });
+  $('zoomReset').addEventListener('click', function(){ goTo(HOME.lat,HOME.lng,HOME.k,500); });
+
+  $('importInput').addEventListener('change', function(){
+    if(this.files && this.files[0]) importBackup(this.files[0]);
+    this.value='';
+  });
+
+  // esc
+  document.addEventListener('keydown', function(e){
+    if(e.key!=='Escape') return;
+    if($('lightbox').classList.contains('show')) $('lightbox').classList.remove('show');
+    else if($('routeSave').classList.contains('show')) $('routeSave').classList.remove('show');
+    else if($('popover').classList.contains('show')){ hidePopover(); pending=null; }
+    else if(routeMode) exitRouteMode();
+    else if(focusRouteId) exitJourney();
+    else if($('statsPanel').classList.contains('open')) closeStats();
+    else if($('tripForm').classList.contains('show')) hideTripForm();
+    else if($('timeline').classList.contains('open')) closeTimeline();
+    else closeDrawer();
+  });
+})();
+</script>
+</body>
+</html>
