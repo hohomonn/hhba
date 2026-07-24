@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.usa.min.js"></script>
 <script>window.__usaTopo = (window.Datamap && Datamap.prototype.usaTopo) || null;</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.world.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --ocean:#99E5D2;
@@ -371,13 +372,92 @@
   body.readonly .ro-badge{display:block}
   body.readonly .c-actions #routeToggle{display:none}
 
+  /* ---------- account row ---------- */
+  .acct{
+    display:none;align-items:center;justify-content:space-between;gap:8px;
+    margin-top:10px;padding-top:9px;border-top:1px solid var(--hairline);
+    font-size:10.5px;color:var(--muted);
+  }
+  .acct.show{display:flex}
+  .acct span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:9.5px}
+  .acct button{
+    background:none;border:1px solid var(--hairline);color:var(--muted);
+    font-family:var(--sans);font-size:10.5px;padding:3px 8px;cursor:pointer;flex:none;
+  }
+  .acct button:hover{border-color:var(--ink);color:var(--ink)}
+
+  /* ---------- auth overlay ---------- */
+  .auth-wrap{
+    position:fixed;inset:0;z-index:95;background:rgba(153,229,210,.94);
+    display:none;align-items:center;justify-content:center;padding:20px;
+  }
+  .auth-wrap.show{display:flex}
+  .auth-box{
+    background:var(--paper);border:2px solid var(--ink);box-shadow:6px 6px 0 var(--ink);
+    padding:26px 26px 22px;width:min(340px,100%);
+  }
+  .auth-logo{
+    font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.2em;
+    color:var(--accent);text-transform:uppercase;margin-bottom:7px;
+  }
+  .auth-box h2{font-weight:900;font-size:24px;line-height:1.1}
+  .auth-sub{font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:6px}
+  .auth-box label{
+    display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);margin:14px 0 3px;
+  }
+  .auth-box input{
+    width:100%;border:none;border-bottom:1.5px solid var(--ink);background:transparent;
+    font-family:var(--sans);font-size:14px;padding:5px 1px;color:var(--ink);outline:none;
+  }
+  .auth-box input:focus{border-bottom-color:var(--accent)}
+  .auth-msg{font-size:11.5px;line-height:1.5;margin-top:12px;color:var(--accent);min-height:1px}
+  .auth-msg.ok{color:var(--muted)}
+  .auth-go{width:100%;margin-top:14px;padding:9px}
+  .auth-alt{display:flex;flex-direction:column;gap:7px;margin-top:13px;padding-top:12px;border-top:1px solid var(--hairline)}
+  .auth-alt button{
+    background:none;border:none;cursor:pointer;font-family:var(--sans);
+    font-size:11.5px;color:var(--muted);text-align:left;padding:0;
+  }
+  .auth-alt button:hover{color:var(--accent)}
+
   /* ---------- lightbox / toast ---------- */
   .lightbox{
     position:fixed;inset:0;z-index:80;background:rgba(36,29,26,.82);
     display:none;align-items:center;justify-content:center;cursor:zoom-out;padding:24px;
   }
   .lightbox.show{display:flex}
-  .lightbox img{max-width:100%;max-height:100%;border:3px solid var(--paper)}
+  .lightbox img{max-width:calc(100% - 96px);max-height:100%;border:3px solid var(--paper)}
+  .lb-nav{
+    position:fixed;top:50%;transform:translateY(-50%);z-index:81;
+    width:44px;height:56px;background:var(--paper);border:2px solid var(--ink);
+    font-size:26px;line-height:1;color:var(--ink);cursor:pointer;
+    box-shadow:3px 3px 0 rgba(0,0,0,.3);
+  }
+  .lb-prev{left:12px}
+  .lb-next{right:12px}
+  .lb-nav:active{transform:translateY(-50%) translate(1px,1px)}
+  .lb-count{
+    position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:81;
+    font-family:var(--mono);font-size:11px;color:var(--paper);letter-spacing:.12em;
+    background:rgba(36,29,26,.7);padding:4px 12px;
+  }
+  @media (max-width:640px){
+    .lightbox img{max-width:100%}
+    .lb-nav{width:38px;height:48px;font-size:22px}
+  }
+
+  /* ---------- day-by-day records ---------- */
+  .dayblock{border:1px solid var(--hairline);background:#FCFAF2;padding:9px 10px;margin-top:8px}
+  .db-date{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.08em;margin-bottom:4px}
+  .dayblock textarea{min-height:40px;font-size:12.5px}
+  .dayblock .photo-strip img{width:46px;height:46px}
+  .dayblock .add-photo{width:46px;height:46px;font-size:16px}
+  #dayBuild{margin-top:4px}
+  .day-hint{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+  .tday{border-top:1px dotted var(--hairline);margin-top:9px;padding-top:8px}
+  .tday .td-d{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--ink);letter-spacing:.08em;margin-bottom:3px}
+  .tday .td-d span{color:var(--muted);font-weight:400}
   .toast{
     position:fixed;bottom:64px;left:50%;transform:translateX(-50%) translateY(8px);z-index:90;
     background:var(--ink);color:var(--paper);font-size:12px;padding:8px 16px;
@@ -442,7 +522,29 @@
   </div>
   <nav class="place-index" id="placeIndex"></nav>
   <div class="ro-badge">Read Only</div>
+  <div class="acct" id="acct">
+    <span id="acctWho"></span>
+    <button id="acctBtn">로그인</button>
+  </div>
 </header>
+
+<div class="auth-wrap" id="authWrap">
+  <div class="auth-box">
+    <div class="auth-logo">HOHO&rsquo;s Bizarre Adventure</div>
+    <h2 id="authTitle">로그인</h2>
+    <p class="auth-sub" id="authSub">계정으로 로그인하면 어느 기기에서든 내 지도를 볼 수 있어요.</p>
+    <label for="authEmail">이메일</label>
+    <input type="email" id="authEmail" autocomplete="email" placeholder="you@example.com">
+    <label for="authPw">비밀번호</label>
+    <input type="password" id="authPw" autocomplete="current-password" placeholder="6자 이상">
+    <div class="auth-msg" id="authMsg"></div>
+    <button class="btn primary auth-go" id="authGo">로그인</button>
+    <div class="auth-alt">
+      <button id="authSwap">계정이 없으신가요? 회원가입</button>
+      <button id="authGuest">로그인 없이 둘러보기</button>
+    </div>
+  </div>
+</div>
 
 <div class="search" id="searchBox">
   <button class="s-btn" id="searchBtn" aria-label="도시 검색">⌕</button>
@@ -540,9 +642,15 @@
       </div>
       <label for="tfNote">일기 · 메모</label>
       <textarea id="tfNote" placeholder="그날 뭐 했는지, 뭐 먹었는지, 어땠는지…"></textarea>
-      <label>사진</label>
+      <label>사진 (전체)</label>
       <div class="photo-strip" id="photoStrip">
         <button class="add-photo" id="addPhotoBtn" title="사진 추가" type="button">＋</button>
+      </div>
+      <div id="daySection" style="display:none">
+        <label>날짜별 기록</label>
+        <button type="button" class="btn tiny ghost" id="dayBuild">날짜별로 나눠 기록하기</button>
+        <div class="day-hint" id="dayHint"></div>
+        <div id="dayList"></div>
       </div>
       <input type="file" id="photoInput" accept="image/*" multiple style="display:none">
       <div class="f-actions">
@@ -575,7 +683,12 @@
   </div>
 </aside>
 
-<div class="lightbox" id="lightbox"><img id="lightboxImg" alt=""></div>
+<div class="lightbox" id="lightbox">
+  <button class="lb-nav lb-prev" id="lbPrev" aria-label="이전 사진">‹</button>
+  <img id="lightboxImg" alt="">
+  <button class="lb-nav lb-next" id="lbNext" aria-label="다음 사진">›</button>
+  <div class="lb-count" id="lbCount"></div>
+</div>
 <input type="file" id="importInput" accept="application/json,.json" style="display:none">
 <div class="toast" id="toast"></div>
 
@@ -585,6 +698,22 @@
 
   var KEY = 'travel-log:data';
   var PHOTO_PREFIX = 'travel-log:photo:';
+
+  /* ======================================================================
+     Supabase 설정 — 아래 두 줄만 채우면 계정 로그인이 켜집니다.
+     비워두면 예전처럼 이 브라우저에만 저장되는 모드로 동작합니다.
+     ====================================================================== */
+  var SUPABASE_URL = '';
+  var SUPABASE_ANON_KEY = '';
+  /* ====================================================================== */
+
+  var sb=null, session=null;
+  var CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+  if(CLOUD){
+    try{ sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
+    catch(e){ CLOUD=false; }
+  }
+
   // read-only share mode: open with #view (e.g. https://.../index.html#view)
   var READONLY = location.hash.indexOf('view')>-1 || location.search.indexOf('view')>-1;
   if(READONLY) document.body.classList.add('readonly');
@@ -645,39 +774,74 @@
     return Math.abs(lat).toFixed(2)+'° '+(lat>=0?'N':'S')+' · '+Math.abs(lng).toFixed(2)+'° '+(lng>=0?'E':'W');
   }
   function normLng(lng){ while(lng>180)lng-=360; while(lng<-180)lng+=360; return lng; }
+  function tripPhotoIds(t){
+    var ids=(t.photos||[]).slice();
+    (t.days||[]).forEach(function(d){ (d.photos||[]).forEach(function(id){ ids.push(id); }); });
+    return ids;
+  }
   var toastTimer;
   function toast(msg){
     var t=$('toast'); t.textContent=msg; t.classList.add('show');
     clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.classList.remove('show'); },2600);
   }
 
-  // ---------- storage (Claude artifact storage -> localStorage -> memory) ----------
+  // ---------- storage: Supabase (로그인 시) -> Claude storage -> localStorage -> memory ----------
   var warned=false;
   function warnOnce(){ if(!warned){ toast('저장소에 연결할 수 없어 이 세션에서만 기록이 유지돼요. 백업은 핀 목록의 내보내기를 이용하세요'); warned=true; } }
-  var store=(function(){
+
+  var localStore=(function(){
     if(window.storage){
       return {
+        name:'claude',
         get:function(k){ return window.storage.get(k).then(function(r){ return (r&&r.value!=null)?r.value:null; }); },
         set:function(k,v){ return window.storage.set(k,v); },
-        del:function(k){ return window.storage.delete(k); }
+        del:function(k){ return window.storage.delete(k); },
+        keys:function(){ return Promise.resolve(null); }
       };
     }
     try{
       localStorage.setItem('__t','1'); localStorage.removeItem('__t');
       return {
-        get:function(k){ var v=localStorage.getItem(k); return Promise.resolve(v); },
+        name:'local',
+        get:function(k){ return Promise.resolve(localStorage.getItem(k)); },
         set:function(k,v){ localStorage.setItem(k,v); return Promise.resolve(); },
-        del:function(k){ localStorage.removeItem(k); return Promise.resolve(); }
+        del:function(k){ localStorage.removeItem(k); return Promise.resolve(); },
+        keys:function(){
+          var out=[];
+          for(var i=0;i<localStorage.length;i++) out.push(localStorage.key(i));
+          return Promise.resolve(out);
+        }
       };
     }catch(e){}
     var mem={};
     return {
-      volatile:true,
+      name:'memory', volatile:true,
       get:function(k){ return Promise.resolve(mem[k]!=null?mem[k]:null); },
       set:function(k,v){ mem[k]=v; warnOnce(); return Promise.resolve(); },
-      del:function(k){ delete mem[k]; return Promise.resolve(); }
+      del:function(k){ delete mem[k]; return Promise.resolve(); },
+      keys:function(){ return Promise.resolve(Object.keys(mem)); }
     };
   })();
+
+  var cloudStore={
+    name:'cloud',
+    get:function(k){
+      return sb.from('kv').select('value').eq('key',k).maybeSingle().then(function(r){
+        if(r.error) throw r.error;
+        return r.data ? r.data.value : null;
+      });
+    },
+    set:function(k,v){
+      return sb.from('kv').upsert({ user_id:session.user.id, key:k, value:v }, { onConflict:'user_id,key' })
+        .then(function(r){ if(r.error) throw r.error; });
+    },
+    del:function(k){
+      return sb.from('kv').delete().eq('key',k).then(function(r){ if(r.error) throw r.error; });
+    }
+  };
+
+  var store=localStore;   // swapped to cloudStore after login
+
   function loadData(){
     return store.get(KEY).then(function(v){
       return v ? JSON.parse(v) : null;
@@ -685,7 +849,9 @@
   }
   function saveData(){
     if(READONLY) return;
-    store.set(KEY, JSON.stringify(state)).catch(warnOnce);
+    store.set(KEY, JSON.stringify(state)).catch(function(e){
+      toast(store===cloudStore ? '클라우드 저장에 실패했어요. 연결을 확인해주세요' : '저장에 실패했어요');
+    });
   }
   function savePhoto(id,dataURL){
     photoCache[id]=dataURL;
@@ -709,7 +875,7 @@
   function allPhotoIds(){
     var ids=[];
     state.places.forEach(function(p){
-      (p.trips||[]).forEach(function(t){ (t.photos||[]).forEach(function(id){ ids.push(id); }); });
+      (p.trips||[]).forEach(function(t){ tripPhotoIds(t).forEach(function(id){ ids.push(id); }); });
     });
     return ids;
   }
@@ -747,6 +913,151 @@
       }catch(e){ toast('올바른 백업 파일이 아니에요'); }
     };
     reader.readAsText(file);
+  }
+
+  // ---------- auth ----------
+  var authMode='login';
+  function initAuth(){
+    if(!CLOUD || READONLY){
+      $('acct').classList.remove('show');
+      return Promise.resolve();
+    }
+    return sb.auth.getSession().then(function(r){
+      session=(r.data && r.data.session) || null;
+      applySession();
+      if(!session) showAuth('login');
+      return null;
+    }).catch(function(){ return null; });
+  }
+  function applySession(){
+    store = session ? cloudStore : localStore;
+    $('acct').classList.add('show');
+    if(session){
+      $('acctWho').textContent=session.user.email;
+      $('acctBtn').textContent='로그아웃';
+    }else{
+      $('acctWho').textContent='로그인 안 됨 (이 브라우저에만 저장)';
+      $('acctBtn').textContent='로그인';
+    }
+  }
+  function showAuth(mode){
+    authMode=mode||'login';
+    var signup=authMode==='signup';
+    $('authTitle').textContent=signup?'회원가입':'로그인';
+    $('authSub').textContent=signup
+      ? '이메일과 비밀번호만 있으면 됩니다. 내 기록은 나만 볼 수 있어요.'
+      : '계정으로 로그인하면 어느 기기에서든 내 지도를 볼 수 있어요.';
+    $('authGo').textContent=signup?'가입하기':'로그인';
+    $('authSwap').textContent=signup?'이미 계정이 있으신가요? 로그인':'계정이 없으신가요? 회원가입';
+    $('authPw').setAttribute('autocomplete', signup?'new-password':'current-password');
+    setAuthMsg('');
+    $('authWrap').classList.add('show');
+    setTimeout(function(){ $('authEmail').focus(); },40);
+  }
+  function hideAuth(){ $('authWrap').classList.remove('show'); }
+  function setAuthMsg(m,ok){
+    var el=$('authMsg');
+    el.textContent=m||'';
+    el.classList.toggle('ok', !!ok);
+  }
+  $('authSwap').addEventListener('click', function(){ showAuth(authMode==='signup'?'login':'signup'); });
+  $('authGuest').addEventListener('click', function(){
+    hideAuth();
+    applySession();
+    toast('로그인 없이 둘러보는 중이에요. 기록은 이 브라우저에만 저장돼요');
+  });
+  $('authPw').addEventListener('keydown', function(e){ if(e.key==='Enter') $('authGo').click(); });
+  $('authEmail').addEventListener('keydown', function(e){ if(e.key==='Enter') $('authPw').focus(); });
+
+  $('authGo').addEventListener('click', function(){
+    var email=$('authEmail').value.trim();
+    var pw=$('authPw').value;
+    if(!email || !pw){ setAuthMsg('이메일과 비밀번호를 입력해주세요'); return; }
+    if(pw.length<6){ setAuthMsg('비밀번호는 6자 이상이어야 해요'); return; }
+    $('authGo').disabled=true;
+    setAuthMsg('처리 중…', true);
+
+    var call = authMode==='signup'
+      ? sb.auth.signUp({ email:email, password:pw })
+      : sb.auth.signInWithPassword({ email:email, password:pw });
+
+    call.then(function(r){
+      $('authGo').disabled=false;
+      if(r.error){ setAuthMsg(authErrorText(r.error)); return; }
+      if(authMode==='signup' && !(r.data && r.data.session)){
+        setAuthMsg('가입 확인 메일을 보냈어요. 메일의 링크를 누른 뒤 로그인해주세요.', true);
+        authMode='login';
+        $('authTitle').textContent='로그인';
+        $('authGo').textContent='로그인';
+        return;
+      }
+      session=r.data.session;
+      applySession();
+      hideAuth();
+      afterLogin();
+    }).catch(function(){
+      $('authGo').disabled=false;
+      setAuthMsg('연결에 실패했어요. 잠시 후 다시 시도해주세요');
+    });
+  });
+
+  function authErrorText(e){
+    var m=(e && e.message)||'';
+    if(/Invalid login/i.test(m)) return '이메일 또는 비밀번호가 올바르지 않아요';
+    if(/already registered|User already/i.test(m)) return '이미 가입된 이메일이에요. 로그인해주세요';
+    if(/valid email/i.test(m)) return '이메일 형식을 확인해주세요';
+    if(/Password should/i.test(m)) return '비밀번호는 6자 이상이어야 해요';
+    return m || '문제가 발생했어요';
+  }
+
+  $('acctBtn').addEventListener('click', function(){
+    if(session){
+      if(!confirm('로그아웃할까요?')) return;
+      sb.auth.signOut().then(function(){
+        session=null;
+        applySession();
+        loadAndBoot().then(function(){ showAuth('login'); });
+      });
+    }else{
+      showAuth('login');
+    }
+  });
+
+  // after logging in: offer to upload data left in this browser
+  function afterLogin(){
+    toast('로그인했어요');
+    var localPlaces=null;
+    localStore.get(KEY).then(function(v){
+      try{ localPlaces=v?JSON.parse(v):null; }catch(e){}
+      return cloudStore.get(KEY);
+    }).then(function(cloudVal){
+      var hasLocal = localPlaces && (localPlaces.places||[]).length;
+      var hasCloud = !!cloudVal;
+      if(hasLocal && !hasCloud &&
+         confirm('이 브라우저에 저장돼 있던 기록 '+localPlaces.places.length+'곳을 내 계정으로 옮길까요?')){
+        return migrateLocalToCloud(localPlaces);
+      }
+    }).catch(function(){})
+      .then(function(){ return loadAndBoot(); });
+  }
+
+  function migrateLocalToCloud(data){
+    var ids=[];
+    (data.places||[]).forEach(function(p){
+      (p.trips||[]).forEach(function(t){ tripPhotoIds(t).forEach(function(id){ ids.push(id); }); });
+    });
+    toast('기록을 옮기는 중이에요…');
+    return Promise.all(ids.map(function(id){
+      return localStore.get(PHOTO_PREFIX+id).then(function(v){
+        return v ? cloudStore.set(PHOTO_PREFIX+id, v) : null;
+      }).catch(function(){});
+    })).then(function(){
+      return cloudStore.set(KEY, JSON.stringify({places:data.places||[], routes:data.routes||[]}));
+    }).then(function(){
+      toast('내 계정으로 기록을 옮겼어요');
+    }).catch(function(){
+      toast('일부 기록을 옮기지 못했어요');
+    });
   }
 
   // ---------- map ----------
@@ -920,34 +1231,37 @@
       if(ll&&!isNaN(ll[0])) $('coordsVal').textContent=fmtLL(ll[1],normLng(ll[0]));
     });
 
-    loadData().then(function(data){
-      var useLocal = data && !READONLY;
-      if(useLocal){
+    initAuth().then(loadAndBoot);
+  }
+
+  function applyData(d){
+    state.places=d.places||[];
+    state.routes=d.routes||[];
+    if(migrateState()) saveData();
+  }
+
+  // loads from the currently active store, falling back to bundled data.json
+  function loadAndBoot(){
+    state.places=[]; state.routes=[]; photoCache={};
+    return loadData().then(function(data){
+      if(data && !READONLY){
         applyData(data);
-        boot();
-      }else{
-        // deployed page (GitHub Pages 등): try bundled data.json — used by #view share links,
-        // and as initial data when local storage is empty
-        fetchSeed().then(function(seed){
-          if(seed){
-            applyData(seed);
-            var photos=seed.photos||{};
-            Object.keys(photos).forEach(function(id){ photoCache[id]=photos[id]; });
-          }else if(data){
-            applyData(data);
-          }
-          boot();
-        });
+        return;
       }
-      function applyData(d){
-        state.places=d.places||[];
-        state.routes=d.routes||[];
-        if(migrateState()) saveData();
-      }
-      function boot(){
-        renderAll();
-        goTo(HOME.lat, HOME.lng, HOME.k, 0);
-      }
+      // a signed-in account starts empty — never seed it with the site owner's data
+      if(session && !READONLY) return;
+      return fetchSeed().then(function(seed){
+        if(seed){
+          applyData(seed);
+          var photos=seed.photos||{};
+          Object.keys(photos).forEach(function(id){ photoCache[id]=photos[id]; });
+        }else if(data){
+          applyData(data);
+        }
+      });
+    }).then(function(){
+      renderAll();
+      goTo(HOME.lat, HOME.lng, HOME.k, 0);
     });
   }
 
@@ -1548,11 +1862,22 @@
       var photos=(t.photos||[]).map(function(pid){
         return '<img data-photo="'+pid+'" alt="사진">';
       }).join('');
+      var daysHtml=(t.days||[]).map(function(day){
+        var dphotos=(day.photos||[]).map(function(pid){
+          return '<img data-photo="'+pid+'" alt="사진">';
+        }).join('');
+        return '<div class="tday">'+
+          '<div class="td-d">'+esc(fmtDayLabel(day.d))+'</div>'+
+          (day.note?'<div class="t-note">'+esc(day.note)+'</div>':'')+
+          (dphotos?'<div class="t-photos">'+dphotos+'</div>':'')+
+          '</div>';
+      }).join('');
       return '<article class="trip" data-id="'+t.id+'">'+
         '<div class="t-date">'+esc(fmtRange(t))+'</div>'+
         (t.title?'<div class="t-title">'+esc(t.title)+'</div>':'')+
         (t.note?'<div class="t-note">'+esc(t.note)+'</div>':'')+
         (photos?'<div class="t-photos">'+photos+'</div>':'')+
+        daysHtml+
         '<div class="t-actions">'+
           '<button class="btn tiny ghost" data-act="edit">수정</button>'+
           '<button class="btn tiny ghost danger" data-act="del">삭제</button>'+
@@ -1571,14 +1896,19 @@
 
   $('tripList').addEventListener('click', function(e){
     var img=e.target.closest('img[data-photo]');
-    if(img && img.src){ $('lightboxImg').src=img.src; $('lightbox').classList.add('show'); return; }
+    if(img){
+      var box=img.closest('.trip');
+      var ids=[].slice.call(box.querySelectorAll('img[data-photo]')).map(function(el){ return el.getAttribute('data-photo'); });
+      openLightbox(ids, ids.indexOf(img.getAttribute('data-photo')));
+      return;
+    }
     var btn=e.target.closest('button[data-act]'); if(!btn) return;
     var id=btn.closest('.trip').getAttribute('data-id');
     var p=getPlace(activePlaceId); if(!p) return;
     var t=p.trips.filter(function(x){return x.id===id;})[0]; if(!t) return;
     if(btn.getAttribute('data-act')==='del'){
       if(confirm('이 기록을 삭제할까요?')){
-        (t.photos||[]).forEach(deletePhoto);
+        tripPhotoIds(t).forEach(deletePhoto);
         p.trips=p.trips.filter(function(x){return x.id!==id;});
         saveData(); renderTrips(); renderStatsIndex();
       }
@@ -1590,20 +1920,157 @@
       $('tfEnd').value=t.end||'';
       $('tfNote').value=t.note||'';
       formPhotos=(t.photos||[]).map(function(pid){ return {id:pid,isNew:false}; });
-      removedPhotos=[];
-      renderPhotoStrip();
+      formDays=(t.days||[]).map(function(day){
+        return { d:day.d, note:day.note||'', photos:(day.photos||[]).map(function(pid){ return {id:pid,isNew:false}; }) };
+      });
+      removedPhotos=[]; photoTarget=-1;
+      renderPhotoStrip(); renderDayList(); updateDaySection();
       formPhotos.forEach(function(fp){
         loadPhoto(fp.id).then(function(url){ fp.url=url; renderPhotoStrip(); });
+      });
+      formDays.forEach(function(fd){
+        fd.photos.forEach(function(fp){
+          loadPhoto(fp.id).then(function(url){ fp.url=url; renderDayStrips(); });
+        });
       });
       $('tripForm').classList.add('show');
       $('tfTitle').focus();
     }
   });
-  $('lightbox').addEventListener('click', function(){ $('lightbox').classList.remove('show'); });
+  // lightbox with prev/next
+  var lbIds=[], lbIdx=0;
+  function openLightbox(ids, idx){
+    if(!ids.length) return;
+    lbIds=ids; lbIdx=Math.max(0, idx);
+    updateLightbox();
+    $('lightbox').classList.add('show');
+  }
+  function updateLightbox(){
+    $('lbCount').textContent=(lbIdx+1)+' / '+lbIds.length;
+    var multi=lbIds.length>1;
+    $('lbPrev').style.display=multi?'':'none';
+    $('lbNext').style.display=multi?'':'none';
+    $('lbCount').style.display=multi?'':'none';
+    loadPhoto(lbIds[lbIdx]).then(function(url){
+      if(url) $('lightboxImg').src=url;
+    });
+  }
+  function lbMove(dir){
+    if(lbIds.length<2) return;
+    lbIdx=(lbIdx+dir+lbIds.length)%lbIds.length;
+    updateLightbox();
+  }
+  $('lbPrev').addEventListener('click', function(e){ e.stopPropagation(); lbMove(-1); });
+  $('lbNext').addEventListener('click', function(e){ e.stopPropagation(); lbMove(1); });
+  $('lightbox').addEventListener('click', function(e){
+    if(e.target.closest('.lb-nav')) return;
+    $('lightbox').classList.remove('show');
+  });
+  document.addEventListener('keydown', function(e){
+    if(!$('lightbox').classList.contains('show')) return;
+    if(e.key==='ArrowLeft') lbMove(-1);
+    else if(e.key==='ArrowRight') lbMove(1);
+  });
 
   // ---------- trip form + photos ----------
   var formPhotos=[], removedPhotos=[];
+  var formDays=[];        // [{d:'YYYY-MM-DD', note, photos:[{id,url,isNew}]}]
+  var photoTarget=-1;     // -1 = trip-level strip, otherwise index into formDays
   var dateModeVal='day';
+
+  function fmtDayLabel(d){
+    var wd=['일','월','화','수','목','금','토'][new Date(d).getDay()];
+    return d.slice(5).replace('-','.')+' ('+wd+')';
+  }
+  function dateRangeList(start,end){
+    var out=[], cur=new Date(start), last=new Date(end);
+    while(cur<=last && out.length<=31){
+      var m=cur.getMonth()+1, dd=cur.getDate();
+      out.push(cur.getFullYear()+'-'+(m<10?'0':'')+m+'-'+(dd<10?'0':'')+dd);
+      cur.setDate(cur.getDate()+1);
+    }
+    return out.length>31 ? null : out;
+  }
+  function updateDaySection(){
+    var start=$('tfStart').value, end=$('tfEnd').value;
+    var ok = dateModeVal==='day' && start && end && end>start;
+    $('daySection').style.display = ok ? '' : 'none';
+    $('dayBuild').style.display = (ok && !formDays.length) ? '' : 'none';
+    $('dayHint').textContent = (ok && !formDays.length) ? '하루하루 따로 일기와 사진을 남길 수 있어요 (31일 이내)' : '';
+    if(ok && formDays.length){
+      // dates changed after building: rebuild, keeping content of matching dates
+      var list=dateRangeList(start,end);
+      if(list && (list.length!==formDays.length || list[0]!==formDays[0].d)){
+        captureDayNotes();
+        var old={}; formDays.forEach(function(fd){ old[fd.d]=fd; });
+        formDays=list.map(function(d){ return old[d]||{d:d, note:'', photos:[]}; });
+        renderDayList();
+      }
+    }
+    if(!ok && formDays.length){ captureDayNotes(); renderDayList(); }
+  }
+  $('dayBuild').addEventListener('click', function(){
+    var list=dateRangeList($('tfStart').value, $('tfEnd').value);
+    if(!list){ toast('날짜별 기록은 31일 이내 여행만 가능해요'); return; }
+    formDays=list.map(function(d){ return {d:d, note:'', photos:[]}; });
+    renderDayList();
+    updateDaySection();
+  });
+  $('tfStart').addEventListener('change', updateDaySection);
+  $('tfEnd').addEventListener('change', updateDaySection);
+
+  function captureDayNotes(){
+    formDays.forEach(function(fd,i){
+      var ta=document.querySelector('#dayList textarea[data-dnote="'+i+'"]');
+      if(ta) fd.note=ta.value;
+    });
+  }
+  function renderDayList(){
+    var box=$('dayList');
+    box.innerHTML=formDays.map(function(fd,i){
+      return '<div class="dayblock">'+
+        '<div class="db-date">'+esc(fmtDayLabel(fd.d))+'</div>'+
+        '<textarea data-dnote="'+i+'" placeholder="이날의 일기…"></textarea>'+
+        '<div class="photo-strip" data-dstrip="'+i+'">'+
+          '<button class="add-photo" type="button" data-dadd="'+i+'">＋</button>'+
+        '</div></div>';
+    }).join('');
+    formDays.forEach(function(fd,i){
+      var ta=box.querySelector('textarea[data-dnote="'+i+'"]');
+      if(ta) ta.value=fd.note||'';
+    });
+    renderDayStrips();
+  }
+  function renderDayStrips(){
+    formDays.forEach(function(fd,i){
+      var strip=document.querySelector('#dayList [data-dstrip="'+i+'"]');
+      if(!strip) return;
+      strip.querySelectorAll('.ph').forEach(function(n){ n.remove(); });
+      var addBtn=strip.querySelector('.add-photo');
+      fd.photos.forEach(function(fp,idx){
+        var d=document.createElement('div'); d.className='ph';
+        var img=document.createElement('img');
+        if(fp.url) img.src=fp.url;
+        var rm=document.createElement('button');
+        rm.className='rm'; rm.textContent='✕'; rm.type='button';
+        rm.addEventListener('click', function(){
+          if(!fp.isNew) removedPhotos.push(fp.id);
+          fd.photos.splice(idx,1);
+          renderDayStrips();
+        });
+        d.appendChild(img); d.appendChild(rm);
+        strip.insertBefore(d, addBtn);
+      });
+    });
+  }
+  $('dayList').addEventListener('click', function(e){
+    var add=e.target.closest('[data-dadd]');
+    if(add){
+      captureDayNotes();
+      photoTarget=+add.getAttribute('data-dadd');
+      $('photoInput').click();
+    }
+  });
 
   function setDateMode(mode){
     dateModeVal=mode;
@@ -1620,6 +2087,7 @@
         else el.value=v;
       }
     });
+    updateDaySection();
   }
   bindChips($('dateMode'), function(m){ setDateMode(m); }, 'data-mode');
 
@@ -1643,16 +2111,19 @@
     });
   }
 
-  $('addPhotoBtn').addEventListener('click', function(){ $('photoInput').click(); });
+  $('addPhotoBtn').addEventListener('click', function(){ photoTarget=-1; $('photoInput').click(); });
   $('photoInput').addEventListener('change', function(){
     var files=Array.prototype.slice.call(this.files||[]);
     this.value='';
+    var target=photoTarget;
     files.forEach(function(f){
       if(!/^image\//.test(f.type)) return;
       resizeImage(f).then(function(url){
         if(!url){ toast('이미지를 읽을 수 없었어요'); return; }
-        formPhotos.push({id:uid(), url:url, isNew:true});
-        renderPhotoStrip();
+        var fp={id:uid(), url:url, isNew:true};
+        if(target>=0 && formDays[target]) formDays[target].photos.push(fp);
+        else formPhotos.push(fp);
+        renderPhotoStrip(); renderDayStrips();
       });
     });
   });
@@ -1686,14 +2157,14 @@
     editingTripId=null;
     setDateMode('day');
     $('tfTitle').value=''; $('tfStart').value=''; $('tfEnd').value=''; $('tfNote').value='';
-    formPhotos=[]; removedPhotos=[];
-    renderPhotoStrip();
+    formPhotos=[]; removedPhotos=[]; formDays=[]; photoTarget=-1;
+    renderPhotoStrip(); renderDayList(); updateDaySection();
     $('tripForm').classList.add('show');
     setTimeout(function(){ $('tfStart').focus(); },50);
   }
   function hideTripForm(){
     $('tripForm').classList.remove('show');
-    editingTripId=null; formPhotos=[]; removedPhotos=[];
+    editingTripId=null; formPhotos=[]; removedPhotos=[]; formDays=[]; photoTarget=-1;
   }
   $('addTripBtn').addEventListener('click', showTripForm);
   $('tfCancel').addEventListener('click', hideTripForm);
@@ -1704,18 +2175,27 @@
     if(!start){ toast(dateModeVal==='month'?'시작 월을 선택해주세요':'시작일을 선택해주세요'); $('tfStart').focus(); return; }
     if(end && dateCmp(end)<dateCmp(start)){ toast('종료가 시작보다 빨라요'); return; }
 
+    captureDayNotes();
     formPhotos.forEach(function(fp){ if(fp.isNew&&fp.url) savePhoto(fp.id,fp.url); });
+    formDays.forEach(function(fd){
+      fd.photos.forEach(function(fp){ if(fp.isNew&&fp.url) savePhoto(fp.id,fp.url); });
+    });
     removedPhotos.forEach(deletePhoto);
+
+    var days=formDays.map(function(fd){
+      return { d:fd.d, note:(fd.note||'').trim(), photos:fd.photos.map(function(fp){ return fp.id; }) };
+    }).filter(function(fd){ return fd.note || fd.photos.length; });
 
     var data={
       title:$('tfTitle').value.trim(),
       start:start, end:end,
       note:$('tfNote').value.trim(),
-      photos:formPhotos.map(function(fp){ return fp.id; })
+      photos:formPhotos.map(function(fp){ return fp.id; }),
+      days:days
     };
     if(editingTripId){
       var t=p.trips.filter(function(x){return x.id===editingTripId;})[0];
-      if(t){ t.title=data.title; t.start=data.start; t.end=data.end; t.note=data.note; t.photos=data.photos; }
+      if(t){ t.title=data.title; t.start=data.start; t.end=data.end; t.note=data.note; t.photos=data.photos; t.days=data.days; }
     }else{
       data.id=uid();
       p.trips.push(data);
@@ -1731,7 +2211,7 @@
   $('deletePlaceBtn').addEventListener('click', function(){
     var p=getPlace(activePlaceId); if(!p) return;
     if(confirm('"'+p.name+'" 핀과 모든 기록을 삭제할까요?')){
-      p.trips.forEach(function(t){ (t.photos||[]).forEach(deletePhoto); });
+      p.trips.forEach(function(t){ tripPhotoIds(t).forEach(deletePhoto); });
       state.places=state.places.filter(function(x){return x.id!==p.id;});
       state.routes.forEach(function(r){
         r.stops=(r.stops||[]).filter(function(s){ return s.p!==p.id; });
@@ -1908,7 +2388,7 @@
       if(e.p.country && e.p.type!=='wish') countrySet[e.p.country.slice(0,3)==='US-'?'USA':e.p.country]=1;
       var d=tripDays(e.t);
       if(d==null) unknownDays++; else days+=d;
-      photos+=(e.t.photos||[]).length;
+      photos+=tripPhotoIds(e.t).length;
       visits[e.p.id]=(visits[e.p.id]||0)+1;
     });
     var journeys=state.routes.filter(function(r){
@@ -2005,7 +2485,8 @@
       }
       var subs=[];
       if(e.place.rating) subs.push('★'.repeat(e.place.rating));
-      if((e.trip.photos||[]).length) subs.push('사진 '+e.trip.photos.length+'장');
+      var pc=tripPhotoIds(e.trip).length;
+      if(pc) subs.push('사진 '+pc+'장');
       html+='<button class="tl-item" data-place="'+e.place.id+'">'+
         '<div class="tl-date">'+esc(fmtRange(e.trip))+'</div>'+
         '<div class="tl-place">'+typeDot(e.place.type)+esc(e.place.name)+'</div>'+
