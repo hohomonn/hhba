@@ -340,6 +340,21 @@
   .tl-item .tl-sub{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-top:4px}
   .tl-empty{font-size:12.5px;color:var(--muted);padding:20px 2px;line-height:1.6}
 
+  /* nested journey group */
+  .tl-group{margin:2px 0 4px}
+  .tl-jitem{border-bottom:none;padding-bottom:7px}
+  .tl-jitem .tl-place{font-size:14.5px}
+  .tl-jitem .jarrow{color:var(--accent);font-family:var(--mono);font-weight:400}
+  .tl-jitem .tl-sub{color:var(--accent);opacity:.75}
+  .tl-children{
+    margin:0 0 8px 7px;padding-left:13px;
+    border-left:2px solid rgba(224,1,124,.3);
+  }
+  .tl-child{padding:8px 2px}
+  .tl-child .tl-place{font-size:12.5px}
+  .tl-child .tl-date{font-size:9.5px}
+  .tl-child:last-child{border-bottom:none}
+
   /* ---------- stats (wrapped) ---------- */
   .year-chips{margin:14px 0 4px}
   .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -948,8 +963,8 @@
      Supabase 설정 — 아래 두 줄만 채우면 계정 로그인이 켜집니다.
      비워두면 예전처럼 이 브라우저에만 저장되는 모드로 동작합니다.
      ====================================================================== */
-  var SUPABASE_URL = 'sb_publishable_3Ijq0C70pIa8Et_LS3562g_HHe4bJs-';
-  var SUPABASE_ANON_KEY = 'https://wbmdmrxxcrxbevxodrel.supabase.co/rest/v1/';
+  var SUPABASE_URL = '';
+  var SUPABASE_ANON_KEY = '';
   /* ====================================================================== */
 
   var sb=null, session=null;
@@ -1961,54 +1976,40 @@
       $('journeyCard').classList.remove('show');
     }
     linesG.selectAll('g.saved').remove();
-    var g=linesG.insert('g',':first-child').attr('class','saved');
     var focused=focusRouteId?state.routes.filter(function(r){return r.id===focusRouteId;})[0]:null;
+    if(!focused){ updateScaleDependents(); return; }   // lines only show for the selected journey
 
-    var others=focused?state.routes.filter(function(r){return r.id!==focusRouteId;}):state.routes;
-    var d=segmentsD(others);
-    if(d){
-      g.append('path').attr('class','halo')
+    var g=linesG.insert('g',':first-child').attr('class','saved');
+    var fd=segmentsD([focused]);
+    if(fd){
+      g.append('path').attr('class','fhalo')
         .attr('fill','none').attr('stroke',css('--paper'))
         .attr('stroke-linecap','round').attr('stroke-linejoin','round')
-        .attr('opacity', focused?.3:.85).attr('d',d);
-      g.append('path').attr('class','line')
-        .attr('fill','none').attr('stroke',css('--ink'))
+        .attr('opacity',.9).attr('d',fd);
+      g.append('path').attr('class','fline')
+        .attr('fill','none').attr('stroke',css('--accent'))
         .attr('stroke-linecap','round').attr('stroke-linejoin','round')
-        .attr('opacity', focused?.18:1)
-        .attr('d',d);
+        .attr('d',fd);
     }
-    if(focused){
-      var fd=segmentsD([focused]);
-      if(fd){
-        g.append('path').attr('class','fhalo')
-          .attr('fill','none').attr('stroke',css('--paper'))
-          .attr('stroke-linecap','round').attr('stroke-linejoin','round')
-          .attr('opacity',.9).attr('d',fd);
-        g.append('path').attr('class','fline')
-          .attr('fill','none').attr('stroke',css('--accent'))
-          .attr('stroke-linecap','round').attr('stroke-linejoin','round')
-          .attr('d',fd);
-      }
-      // numbered badges at pin stops (first visit order)
-      var n=0, seenPin={};
-      (focused.stops||[]).forEach(function(s){
-        if(!s.p) return;
-        var pl=getPlace(s.p); if(!pl) return;
-        n++;
-        if(seenPin[s.p]) return;
-        seenPin[s.p]=1;
-        var xy=projection([pl.lng,pl.lat]);
-        var bg=g.append('g').attr('class','stopnum')
-          .attr('transform','translate('+xy[0]+','+xy[1]+')');
-        var inner=bg.append('g').attr('class','stopnum-inner');
-        inner.append('circle').attr('cx',-12).attr('cy',-12).attr('r',7.5)
-          .attr('fill',css('--accent')).attr('stroke','#fff').attr('stroke-width',1.2);
-        inner.append('text').attr('x',-12).attr('y',-9)
-          .attr('text-anchor','middle')
-          .attr('font-family','var(--mono)').attr('font-size','8.5px').attr('font-weight','700')
-          .attr('fill','#fff').text(n);
-      });
-    }
+    // numbered badges at pin stops (visit order)
+    var n=0, seenPin={};
+    (focused.stops||[]).forEach(function(s){
+      if(!s.p) return;
+      var pl=getPlace(s.p); if(!pl) return;
+      n++;
+      if(seenPin[s.p]) return;
+      seenPin[s.p]=1;
+      var xy=projection([pl.lng,pl.lat]);
+      var bg=g.append('g').attr('class','stopnum')
+        .attr('transform','translate('+xy[0]+','+xy[1]+')');
+      var inner=bg.append('g').attr('class','stopnum-inner');
+      inner.append('circle').attr('cx',-12).attr('cy',-12).attr('r',7.5)
+        .attr('fill',css('--accent')).attr('stroke','#fff').attr('stroke-width',1.2);
+      inner.append('text').attr('x',-12).attr('y',-9)
+        .attr('text-anchor','middle')
+        .attr('font-family','var(--mono)').attr('font-size','8.5px').attr('font-weight','700')
+        .attr('fill','#fff').text(n);
+    });
     updateScaleDependents();
   }
 
@@ -2971,44 +2972,78 @@
     $('timeline').setAttribute('aria-hidden','true');
   }
   function renderTimeline(){
-    var entries=[];
-    state.places.forEach(function(p){
-      (p.trips||[]).forEach(function(t){ entries.push({kind:'trip', place:p, trip:t, sort:dateCmp(t.start||'')}); });
-    });
+    // records that belong to a journey get nested under it instead of listed separately
+    var claimed={};
+    var journeyEntries=[];
     state.routes.forEach(function(r){
-      if(r.start) entries.push({kind:'journey', route:r, sort:dateCmp(r.start)});
+      if(!r.start) return;
+      var kids=[];
+      (r.stops||[]).forEach(function(s){
+        if(!s.p) return;
+        var pl=getPlace(s.p); if(!pl) return;
+        journeyTripsFor(r,pl).forEach(function(t){
+          if(claimed[t.id]) return;
+          claimed[t.id]=r.id;
+          kids.push({place:pl, trip:t});
+        });
+      });
+      kids.sort(function(a,b){ return dateCmp(a.trip.start||'').localeCompare(dateCmp(b.trip.start||'')); });
+      journeyEntries.push({kind:'journey', route:r, kids:kids, sort:dateCmp(r.start)});
+    });
+
+    var entries=journeyEntries.slice();
+    state.places.forEach(function(p){
+      (p.trips||[]).forEach(function(t){
+        if(claimed[t.id]) return;
+        entries.push({kind:'trip', place:p, trip:t, sort:dateCmp(t.start||'')});
+      });
     });
     entries.sort(function(a,b){ return b.sort.localeCompare(a.sort); });
+
+    var undated=state.routes.filter(function(r){ return !r.start; });
+
     var body=$('tlBody');
-    if(!entries.length){
+    if(!entries.length && !undated.length){
       body.innerHTML='<div class="tl-empty">아직 기록이 없어요.<br>핀을 찍고 첫 기록을 남기면 여기에 시간순으로 쌓여요.</div>';
       return;
     }
-    var html='', lastYear=null;
-    entries.forEach(function(e){
-      var year=(e.sort||'????').slice(0,4);
-      if(year!==lastYear){ html+='<div class="tl-year">'+esc(year)+'</div>'; lastYear=year; }
-      if(e.kind==='journey'){
-        var r=e.route;
-        var stops=r.stops.filter(function(s){return s.p;}).length;
-        html+='<button class="tl-item" data-journey="'+r.id+'">'+
-          '<div class="tl-date">'+esc(fmtDate(r.start))+'</div>'+
-          '<div class="tl-place"><span style="color:var(--accent);font-family:var(--mono)">⟶</span>'+esc(r.name)+'</div>'+
-          '<div class="tl-sub">여정 · '+stops+'곳</div>'+
-          '</button>';
-        return;
-      }
+
+    function tripBtn(e, cls){
       var subs=[];
       if(e.place.rating) subs.push('★'.repeat(e.place.rating));
       var pc=tripPhotoIds(e.trip).length;
       if(pc) subs.push('사진 '+pc+'장');
-      html+='<button class="tl-item" data-place="'+e.place.id+'">'+
+      return '<button class="tl-item '+(cls||'')+'" data-place="'+e.place.id+'">'+
         '<div class="tl-date">'+esc(fmtRange(e.trip))+'</div>'+
         '<div class="tl-place">'+typeDot(e.place.type)+esc(e.place.name)+'</div>'+
         (e.trip.title?'<div class="tl-title">'+esc(e.trip.title)+'</div>':'')+
         (subs.length?'<div class="tl-sub">'+esc(subs.join(' · '))+'</div>':'')+
         '</button>';
+    }
+    function journeyBlock(r, kids){
+      var stops=r.stops.filter(function(s){return s.p;}).length;
+      var html='<div class="tl-group">'+
+        '<button class="tl-item tl-jitem" data-journey="'+r.id+'">'+
+          '<div class="tl-date">'+esc(r.start?fmtDate(r.start):'시기 미정')+'</div>'+
+          '<div class="tl-place"><span class="jarrow">⟶</span>'+esc(r.name)+'</div>'+
+          '<div class="tl-sub">여정 · '+stops+'곳 · 눌러서 경로 보기</div>'+
+        '</button>';
+      if(kids && kids.length){
+        html+='<div class="tl-children">'+kids.map(function(k){ return tripBtn(k,'tl-child'); }).join('')+'</div>';
+      }
+      return html+'</div>';
+    }
+
+    var html='', lastYear=null;
+    entries.forEach(function(e){
+      var year=(e.sort||'????').slice(0,4);
+      if(year!==lastYear){ html+='<div class="tl-year">'+esc(year)+'</div>'; lastYear=year; }
+      html += (e.kind==='journey') ? journeyBlock(e.route, e.kids) : tripBtn(e);
     });
+    if(undated.length){
+      html+='<div class="tl-year">시기 미정</div>';
+      html+=undated.map(function(r){ return journeyBlock(r, null); }).join('');
+    }
     body.innerHTML=html;
   }
   $('tlBody').addEventListener('click', function(e){
