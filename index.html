@@ -9,7 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.usa.min.js"></script>
 <script>window.__usaTopo = (window.Datamap && Datamap.prototype.usaTopo) || null;</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/datamaps/0.5.9/datamaps.world.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --ocean:#99E5D2;
@@ -703,15 +702,57 @@
      Supabase 설정 — 아래 두 줄만 채우면 계정 로그인이 켜집니다.
      비워두면 예전처럼 이 브라우저에만 저장되는 모드로 동작합니다.
      ====================================================================== */
-  var SUPABASE_URL = 'sb_publishable_3Ijq0C70pIa8Et_LS3562g_HHe4bJs-';
-  var SUPABASE_ANON_KEY = 'https://wbmdmrxxcrxbevxodrel.supabase.co/rest/v1/';
+  var SUPABASE_URL = '';
+  var SUPABASE_ANON_KEY = '';
   /* ====================================================================== */
 
   var sb=null, session=null;
-  var CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
-  if(CLOUD){
-    try{ sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); }
-    catch(e){ CLOUD=false; }
+  var CLOUD=false;
+  var CLOUD_WANTED = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+  var cloudError='';
+
+  var SB_CDNS=[
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js',
+    'https://cdn.skypack.dev/pin/@supabase/supabase-js@v2/dist/umd/supabase.js'
+  ];
+  function loadScript(src){
+    return new Promise(function(res,rej){
+      var s=document.createElement('script');
+      s.src=src; s.async=true;
+      s.onload=function(){ res(true); };
+      s.onerror=function(){ rej(new Error('load failed')); };
+      document.head.appendChild(s);
+    });
+  }
+  function ensureSupabaseLib(i){
+    i=i||0;
+    if(window.supabase) return Promise.resolve(true);
+    if(i>=SB_CDNS.length) return Promise.resolve(false);
+    return loadScript(SB_CDNS[i])
+      .then(function(){ return !!window.supabase || ensureSupabaseLib(i+1); })
+      .catch(function(){ return ensureSupabaseLib(i+1); });
+  }
+  function initCloud(){
+    if(!CLOUD_WANTED) return Promise.resolve(false);
+    if(!/^https:\/\/[^\s'"]+\.supabase\.co\/?$/.test(SUPABASE_URL.trim())){
+      cloudError='SUPABASE_URL 값이 올바르지 않아요. https://xxxxx.supabase.co 형태여야 해요.';
+      return Promise.resolve(false);
+    }
+    return ensureSupabaseLib().then(function(ok){
+      if(!ok){
+        cloudError='Supabase 라이브러리를 불러오지 못했어요. 광고 차단 확장 프로그램을 끄고 새로고침해보세요.';
+        return false;
+      }
+      try{
+        sb=window.supabase.createClient(SUPABASE_URL.trim(), SUPABASE_ANON_KEY.trim());
+        CLOUD=true;
+        return true;
+      }catch(e){
+        cloudError='Supabase 연결 설정에 실패했어요: '+(e.message||'');
+        return false;
+      }
+    });
   }
 
   // read-only share mode: open with #view (e.g. https://.../index.html#view)
@@ -918,16 +959,31 @@
   // ---------- auth ----------
   var authMode='login';
   function initAuth(){
-    if(!CLOUD || READONLY){
+    if(READONLY){
       $('acct').classList.remove('show');
       return Promise.resolve();
     }
-    return sb.auth.getSession().then(function(r){
-      session=(r.data && r.data.session) || null;
-      applySession();
-      if(!session) showAuth('login');
-      return null;
-    }).catch(function(){ return null; });
+    return initCloud().then(function(ok){
+      if(!ok){
+        $('acct').classList.remove('show');
+        if(CLOUD_WANTED && cloudError){
+          // keys are filled in but cloud could not start — say so instead of failing silently
+          showAuth('login');
+          setAuthMsg(cloudError);
+          $('authGo').disabled=true;
+        }
+        return null;
+      }
+      return sb.auth.getSession().then(function(r){
+        session=(r.data && r.data.session) || null;
+        applySession();
+        if(!session) showAuth('login');
+        return null;
+      }).catch(function(){
+        applySession();
+        return null;
+      });
+    });
   }
   function applySession(){
     store = session ? cloudStore : localStore;
