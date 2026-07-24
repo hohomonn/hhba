@@ -70,19 +70,25 @@
   .legend .k-lived i{background:var(--gold)}
   .legend .k-trip i{background:var(--ink)}
   .legend .k-wish i{background:var(--wish)}
-  .cartouche .c-actions{display:flex;gap:0;margin-top:11px;border-top:1.5px solid var(--ink)}
+  .cartouche .c-actions{
+    display:grid;grid-template-columns:1fr 1fr;gap:1px;
+    margin-top:11px;padding-top:2px;border-top:1.5px solid var(--ink);
+    background:var(--hairline);
+  }
   .cartouche .c-actions button{
-    flex:1;background:none;border:none;cursor:pointer;font-family:var(--sans);
-    font-size:11.5px;color:var(--muted);padding:9px 2px 3px;text-align:left;
+    background:var(--paper);border:none;cursor:pointer;font-family:var(--sans);
+    font-size:11.5px;color:var(--muted);padding:8px 6px;text-align:center;
+    white-space:nowrap;
   }
   .cartouche .c-actions button:hover{color:var(--accent)}
-  .cartouche .c-actions button + button{border-left:1px solid var(--hairline);padding-left:10px}
   .place-index{display:none;margin-top:6px;max-height:30vh;overflow-y:auto}
   .cartouche.open .place-index{display:block}
   .idx-head{
     font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;
-    color:var(--muted);margin:8px 0 2px;font-weight:700;
+    color:var(--muted);margin:10px 0 2px;font-weight:700;
+    display:flex;justify-content:space-between;align-items:center;gap:8px;
   }
+  .idx-head .gc{color:var(--accent);letter-spacing:0}
   .place-index .row{
     display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;
     padding:6px 2px;border-bottom:1px dotted var(--hairline);
@@ -463,6 +469,7 @@
     background:var(--paper);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);
     font-size:16px;color:var(--muted);cursor:pointer;line-height:1;
   }
+  .wl-music{color:#B9AEA0}
   .wl-music.on{color:var(--accent)}
   .wl-music:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
   .wl-foot{
@@ -470,14 +477,10 @@
     font-size:11px;color:#3E6B5E;letter-spacing:.03em;
   }
 
-  /* map-view music toggle */
-  .map-music{
-    position:fixed;right:18px;bottom:104px;z-index:20;width:34px;height:34px;
-    background:var(--paper);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);
-    font-size:14px;color:var(--muted);cursor:pointer;line-height:1;display:none;
-  }
-  .map-music.avail{display:block}
-  .map-music.on{color:var(--accent)}
+  /* map-view music toggle (sits in the zoom stack) */
+  .zoomctl .map-music{display:none;font-size:15px;color:#B9AEA0}
+  .zoomctl .map-music.avail{display:block}
+  .zoomctl .map-music.on{color:var(--accent)}
 
   /* ---------- modal (signup) ---------- */
   .modal-wrap{
@@ -573,7 +576,6 @@
     .wl-content{gap:16px;padding:18px}
     .wl-board{padding:16px 16px 13px}
     .wl-music{top:12px;right:12px}
-    .map-music{right:12px;bottom:98px}
     .wl-foot{font-size:10px;bottom:12px}
     .journey-card{left:12px;bottom:14px;max-height:44vh}
     .drawer{
@@ -783,12 +785,11 @@
 </div>
 
 <div class="zoomctl">
+  <button id="mapMusicBtn" class="map-music" aria-label="음악 켜기/끄기">♪</button>
   <button id="zoomIn" aria-label="확대">+</button>
   <button id="zoomOut" aria-label="축소">−</button>
   <button id="zoomReset" class="reset" aria-label="한국으로">⌂</button>
 </div>
-
-<button class="map-music" id="mapMusicBtn" aria-label="음악 켜기/끄기">♪</button>
 
 <div class="popover" id="popover">
   <div class="pop-country" id="popCountry">새 장소</div>
@@ -924,19 +925,36 @@
   'use strict';
 
   var KEY = 'travel-log:data';
+
+  var KO_COUNTRY={
+    'South Korea':'대한민국','Korea':'대한민국','Japan':'일본','China':'중국','Taiwan':'대만','Hong Kong':'홍콩','Macau':'마카오',
+    'United States of America':'미국','United States':'미국','Canada':'캐나다','Mexico':'멕시코',
+    'United Kingdom':'영국','France':'프랑스','Germany':'독일','Italy':'이탈리아','Spain':'스페인','Portugal':'포르투갈',
+    'Netherlands':'네덜란드','Belgium':'벨기에','Switzerland':'스위스','Austria':'오스트리아','Czech Republic':'체코','Czechia':'체코',
+    'Hungary':'헝가리','Poland':'폴란드','Denmark':'덴마크','Sweden':'스웨덴','Norway':'노르웨이','Finland':'핀란드',
+    'Iceland':'아이슬란드','Ireland':'아일랜드','Greece':'그리스','Croatia':'크로아티아','Slovenia':'슬로베니아','Russia':'러시아',
+    'Thailand':'태국','Singapore':'싱가포르','Malaysia':'말레이시아','Vietnam':'베트남','Philippines':'필리핀','Indonesia':'인도네시아',
+    'Cambodia':'캄보디아','Laos':'라오스','India':'인도','Nepal':'네팔','Sri Lanka':'스리랑카','Maldives':'몰디브',
+    'United Arab Emirates':'아랍에미리트','Qatar':'카타르','Turkey':'튀르키예','Uzbekistan':'우즈베키스탄','Kazakhstan':'카자흐스탄','Mongolia':'몽골',
+    'Brazil':'브라질','Argentina':'아르헨티나','Chile':'칠레','Peru':'페루','Colombia':'콜롬비아','Bolivia':'볼리비아',
+    'Australia':'호주','New Zealand':'뉴질랜드','Guam':'괌','Northern Mariana Islands':'북마리아나 제도',
+    'Egypt':'이집트','Morocco':'모로코','South Africa':'남아프리카 공화국','Kenya':'케냐'
+  };
+  function koCountry(name){ return KO_COUNTRY[name] || name; }
+
   var PHOTO_PREFIX = 'travel-log:photo:';
 
   /* ======================================================================
      Supabase 설정 — 아래 두 줄만 채우면 계정 로그인이 켜집니다.
      비워두면 예전처럼 이 브라우저에만 저장되는 모드로 동작합니다.
      ====================================================================== */
-  var SUPABASE_URL = 'sb_publishable_3Ijq0C70pIa8Et_LS3562g_HHe4bJs-';
-  var SUPABASE_ANON_KEY = 'https://wbmdmrxxcrxbevxodrel.supabase.co/rest/v1/';
+  var SUPABASE_URL = '';
+  var SUPABASE_ANON_KEY = '';
   /* ====================================================================== */
 
   var sb=null, session=null;
   var CLOUD=false;
-  var CLOUD_WANTED = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+  var CLOUD_WANTED=false;
   var cloudError='';
 
   var SB_CDNS=[
@@ -962,23 +980,33 @@
       .catch(function(){ return ensureSupabaseLib(i+1); });
   }
   // accepts the URL in whatever shape it was pasted: with a path, without https://, with spaces
+  function cleanVal(v){ return String(v||'').trim().replace(/^['"]+|['"]+$/g,'').replace(/[,;]+$/,''); }
+  function looksLikeKey(s){ return /^(sb_|eyJ)/.test(s); }
   function normalizeSupabaseUrl(u){
-    var s=String(u||'').trim().replace(/^['"]+|['"]+$/g,'');
-    if(!s) return '';
-    if(!/^https?:\/\//i.test(s)) s='https://'+s;
-    try{
-      var a=document.createElement('a');
-      a.href=s;
-      var host=(a.hostname||'').replace(/\/+$/,'');
-      if(!host || host.indexOf('.')<0) return '';
-      return 'https://'+host;
-    }catch(e){ return ''; }
+    var s=cleanVal(u);
+    if(!s || looksLikeKey(s)) return '';
+    s=s.replace(/^https?:\/\//i,'');
+    var host=s.split(/[\/?#\s]/)[0];
+    if(!host || host.indexOf('.')<0 || /\s/.test(host)) return '';
+    return 'https://'+host;
   }
   function initCloud(){
-    if(!CLOUD_WANTED) return Promise.resolve(false);
-    var url=normalizeSupabaseUrl(SUPABASE_URL);
+    var rawUrl=cleanVal(SUPABASE_URL), rawKey=cleanVal(SUPABASE_ANON_KEY);
+    // the two values are easy to paste into the wrong slots — sort them out automatically
+    if(looksLikeKey(rawUrl) && !looksLikeKey(rawKey) && normalizeSupabaseUrl(rawKey)){
+      var tmp=rawUrl; rawUrl=rawKey; rawKey=tmp;
+    }
+    if(!rawUrl || !rawKey) return Promise.resolve(false);
+    CLOUD_WANTED=true;
+
+    var url=normalizeSupabaseUrl(rawUrl);
     if(!url){
-      cloudError='SUPABASE_URL 값을 읽을 수 없어요. Supabase의 Project URL을 다시 복사해 넣어주세요.';
+      cloudError='SUPABASE_URL 자리에서 주소를 찾지 못했어요. 지금 읽은 값: "'
+        + rawUrl.slice(0,28) + (rawUrl.length>28?'…':'') + '" — Supabase의 Project URL(https://xxxxx.supabase.co)을 넣어주세요.';
+      return Promise.resolve(false);
+    }
+    if(!looksLikeKey(rawKey)){
+      cloudError='SUPABASE_ANON_KEY 자리의 값이 키 형식이 아니에요. sb_publishable_… 또는 eyJ… 로 시작하는 값을 넣어주세요.';
       return Promise.resolve(false);
     }
     return ensureSupabaseLib().then(function(ok){
@@ -987,7 +1015,7 @@
         return false;
       }
       try{
-        sb=window.supabase.createClient(url, String(SUPABASE_ANON_KEY).trim());
+        sb=window.supabase.createClient(url, rawKey);
         CLOUD=true;
         return true;
       }catch(e){
@@ -1303,9 +1331,9 @@
   function paintMusic(){
     var on=Music.isPlaying();
     $('musicBtn').classList.toggle('on', on);
-    $('musicIcon').textContent=on?'♪':'♪̸';
+    $('musicIcon').textContent='♪';
     $('mapMusicBtn').classList.toggle('on', on);
-    $('mapMusicBtn').textContent=on?'♪':'♪̸';
+    $('mapMusicBtn').textContent='♪';
   }
   function toggleMusic(){
     var nowOn=Music.toggle();
@@ -1703,25 +1731,22 @@
     if(migrateState()) saveData();
   }
 
-  // loads from the currently active store, falling back to bundled data.json
+  // loads from the currently active store; data.json is only used for #view share links
   function loadAndBoot(){
     state.places=[]; state.routes=[]; photoCache={};
     return loadData().then(function(data){
-      if(data && !READONLY){
-        applyData(data);
-        return;
+      if(READONLY){
+        return fetchSeed().then(function(seed){
+          if(seed){
+            applyData(seed);
+            var photos=seed.photos||{};
+            Object.keys(photos).forEach(function(id){ photoCache[id]=photos[id]; });
+          }else if(data){
+            applyData(data);
+          }
+        });
       }
-      // a signed-in account starts empty — never seed it with the site owner's data
-      if(session && !READONLY) return;
-      return fetchSeed().then(function(seed){
-        if(seed){
-          applyData(seed);
-          var photos=seed.photos||{};
-          Object.keys(photos).forEach(function(id){ photoCache[id]=photos[id]; });
-        }else if(data){
-          applyData(data);
-        }
-      });
+      if(data) applyData(data);
     }).then(function(){
       renderAll();
       goTo(HOME.lat, HOME.lng, HOME.k, 0);
@@ -2224,7 +2249,7 @@
   // ---------- popover ----------
   function showPopover(x,y){
     var pop=$('popover');
-    $('popCountry').textContent=pending.countryName||'새 장소';
+    $('popCountry').textContent=pending.countryName?koCountry(pending.countryName):'새 장소';
     $('popName').value=pending.prefill||'';
     setChips($('popChips'), pending.type);
     pop.classList.add('show');
@@ -2281,7 +2306,7 @@
     if(routeMode) return;
     activePlaceId=id;
     var p=getPlace(id); if(!p) return;
-    $('dCountry').textContent=p.countryName||'Somewhere';
+    $('dCountry').textContent=p.countryName?koCountry(p.countryName):'Somewhere';
     $('dName').textContent=p.name;
     $('dCoords').textContent=fmtLL(p.lat,p.lng);
     setChips($('dChips'), p.type);
@@ -2710,14 +2735,33 @@
       idx.innerHTML='<div class="empty-note">아직 핀이 없어요. 지도를 클릭하거나 도시를 검색해보세요.</div>';
       return;
     }
-    var html='<div class="idx-head">핀</div>';
-    var sorted=state.places.slice().sort(function(a,b){ return a.name.localeCompare(b.name,'ko'); });
-    html+=sorted.map(function(p){
-      var stars=p.rating?' '+'★'.repeat(p.rating):'';
-      return '<div class="row"><button class="row-main" data-place="'+p.id+'">'+typeDot(p.type)+
-        '<em>'+esc(p.name)+'</em></button>'+
-        '<span class="cnt">'+(p.trips||[]).length+'건'+esc(stars)+'</span></div>';
-    }).join('');
+    var html='';
+    var groups={}, order=[];
+    state.places.forEach(function(p){
+      var key, label;
+      if(!p.country){ key='__none'; label='그 외'; }
+      else if(p.country.slice(0,3)==='US-'){ key='USA'; label='미국'; }
+      else { key=p.country; label=koCountry(p.countryName||p.country); }
+      if(!groups[key]){ groups[key]={label:label, items:[]}; order.push(key); }
+      groups[key].items.push(p);
+    });
+    order.sort(function(a,b){
+      if(a==='__none') return 1;
+      if(b==='__none') return -1;
+      return groups[b].items.length-groups[a].items.length
+        || groups[a].label.localeCompare(groups[b].label,'ko');
+    });
+    order.forEach(function(key){
+      var g=groups[key];
+      html+='<div class="idx-head">'+esc(g.label)+' <span class="gc">'+g.items.length+'</span></div>';
+      html+=g.items.slice().sort(function(a,b){ return a.name.localeCompare(b.name,'ko'); })
+        .map(function(p){
+          var stars=p.rating?' '+'★'.repeat(p.rating):'';
+          return '<div class="row"><button class="row-main" data-place="'+p.id+'">'+typeDot(p.type)+
+            '<em>'+esc(p.name)+'</em></button>'+
+            '<span class="cnt">'+(p.trips||[]).length+'건'+esc(stars)+'</span></div>';
+        }).join('');
+    });
     if(state.routes.length){
       html+='<div class="idx-head">여정</div>';
       var rsorted=state.routes.slice().sort(function(a,b){
@@ -2861,7 +2905,6 @@
     var html='<div class="stat-grid">'+
       '<div class="stat"><div class="v">'+Object.keys(countrySet).length+'<small>개국</small></div><div class="l">방문한 나라</div></div>'+
       '<div class="stat"><div class="v">'+Object.keys(placeSet).length+'<small>곳</small></div><div class="l">방문한 장소</div></div>'+
-      '<div class="stat"><div class="v">'+days+'<small>일'+(unknownDays?'+':'')+'</small></div><div class="l">길 위에서 보낸 날'+(unknownDays?' (월 단위 기록 '+unknownDays+'건 제외)':'')+'</div></div>'+
       '<div class="stat"><div class="v">'+entries.length+'<small>건</small></div><div class="l">남긴 기록</div></div>'+
       '<div class="stat"><div class="v">'+photos+'<small>장</small></div><div class="l">사진</div></div>'+
       '<div class="stat"><div class="v">'+journeys.length+'<small>개</small></div><div class="l">여정</div></div>'+
@@ -2902,7 +2945,7 @@
         }).join('')+'</div>';
     }
 
-    html+='<div class="stat-note">일수는 일 단위로 기록된 여행만 합산해요. 여정은 시기가 입력된 것만 세요.</div>';
+    html+='<div class="stat-note">여정은 시기가 입력된 것만 세요.</div>';
     body.innerHTML=html;
   }
 
