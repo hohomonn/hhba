@@ -526,6 +526,78 @@
   .auth-msg.ok{color:var(--muted)}
   .auth-go{width:100%;margin-top:14px;padding:9px}
 
+  /* ---------- search: sections + web results ---------- */
+  .search-results .sec{
+    font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);padding:7px 11px 5px;border-bottom:1px solid var(--hairline);
+    background:rgba(36,29,26,.035);display:flex;justify-content:space-between;align-items:center;gap:8px;
+  }
+  .search-results .sec .tag{letter-spacing:.02em;color:var(--accent);text-transform:none;font-size:8.5px}
+  .search-results .en{max-width:54%;overflow:hidden;text-overflow:ellipsis}
+
+  /* ---------- music panel ---------- */
+  .music-panel{
+    position:fixed;z-index:99;display:none;left:0;top:0;
+    background:var(--paper);border:2px solid var(--ink);box-shadow:4px 4px 0 var(--ink);
+    padding:10px 12px 11px;width:178px;
+  }
+  .music-panel.show{display:block}
+  .music-panel .mp-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .music-panel .mp-title{
+    font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  }
+  .music-panel .mp-toggle{
+    background:none;border:1px solid var(--hairline);color:var(--muted);cursor:pointer;
+    font-family:var(--sans);font-size:10.5px;padding:2px 9px;flex:none;
+  }
+  .music-panel .mp-toggle.on{border-color:var(--accent);color:var(--accent)}
+  .music-panel input[type=range]{width:100%;accent-color:var(--accent);margin:0;display:block}
+  .music-panel .mp-val{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:6px;text-align:right}
+
+  /* ---------- profile ---------- */
+  .cartouche .avatar-seal{display:none;justify-content:center;margin:0 0 7px}
+  .cartouche .avatar-seal.show{display:flex}
+  .cartouche .avatar-seal img{
+    width:52px;height:52px;border-radius:50%;object-fit:cover;background:var(--paper);
+    border:2px solid var(--ink);box-shadow:2.5px 2.5px 0 var(--gold);
+  }
+  .logo-sub{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .acct .acct-me{
+    display:flex;align-items:center;gap:5px;min-width:0;flex:1;
+    border:none;padding:2px 0;background:none;cursor:pointer;text-align:left;
+  }
+  .acct .acct-me:hover{border:none}
+  .acct .acct-me:hover span{color:var(--ink)}
+  .acct .acct-me img{
+    width:17px;height:17px;border-radius:50%;object-fit:cover;flex:none;
+    border:1px solid var(--ink);display:none;
+  }
+  .acct .acct-me img.show{display:block}
+  .prof-pic{display:flex;align-items:center;gap:14px;margin-top:16px}
+  .prof-pic .pp-frame{
+    width:76px;height:76px;border-radius:50%;flex:none;cursor:pointer;position:relative;
+    border:2px solid var(--ink);box-shadow:3px 3px 0 var(--gold);background:#EFE7D6;
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+    font-family:var(--mono);font-size:8.5px;color:var(--muted);letter-spacing:.1em;
+    text-align:center;line-height:1.5;
+  }
+  .prof-pic .pp-frame img{width:100%;height:100%;object-fit:cover;display:none}
+  .prof-pic .pp-frame.has img{display:block}
+  .prof-pic .pp-frame.has .pp-hint{display:none}
+  .prof-pic .pp-side{font-size:11.5px;color:var(--muted);line-height:1.6}
+  .prof-pic .pp-side button{
+    background:none;border:none;color:var(--accent);cursor:pointer;
+    font-family:var(--sans);font-size:11.5px;padding:0;text-decoration:underline;
+  }
+  .prof-preview{
+    margin-top:16px;padding:12px 10px;border:1px dashed var(--hairline);background:#FCFAF2;text-align:center;
+  }
+  .prof-preview .pv-sub{
+    font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.2em;color:var(--ink);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .prof-preview .pv-kr{font-size:11.5px;font-weight:800;color:var(--accent);letter-spacing:.1em;margin-top:5px}
+
   /* ---------- lightbox / toast ---------- */
   .lightbox{
     position:fixed;inset:0;z-index:80;background:rgba(36,29,26,.82);
@@ -610,13 +682,14 @@
 
 <header class="cartouche" id="cartouche">
   <div class="logo-wrap">
-    <h1 class="logo" aria-label="HOHO">HOH<svg class="omark" viewBox="0 0 100 100" aria-hidden="true">
+    <div class="avatar-seal" id="avatarSeal"><img id="avatarSealImg" alt="프로필 사진"></div>
+    <h1 class="logo" id="logoWord" aria-label="HOHO">HOH<svg class="omark" viewBox="0 0 100 100" aria-hidden="true">
       <circle cx="50" cy="50" r="46" fill="#241D1A"/>
       <circle cx="50" cy="50" r="46" fill="none" stroke="#E0017C" stroke-width="4"/>
       <path fill="#E0017C" fill-rule="evenodd" d="M50 20 C35 20 24 31.5 24 46 C24 64 50 84 50 84 C50 84 76 64 76 46 C76 31.5 65 20 50 20 Z M50 36 a10 10 0 1 1 0 20 a10 10 0 1 1 0 -20 Z"/>
     </svg></h1>
-    <div class="logo-sub">HOHO&rsquo;s Bizarre Adventure</div>
-    <div class="logo-kr"><span class="arw">―</span> 호호의 기묘한 모험 <span class="arw">→</span></div>
+    <div class="logo-sub" id="logoSub">HOHO&rsquo;s Bizarre Adventure</div>
+    <div class="logo-kr" id="logoKr"><span class="arw">―</span> 호호의 기묘한 모험 <span class="arw">→</span></div>
   </div>
   <div class="stats" id="stats">0개국 · 0곳 · 0번의 기록</div>
   <div class="legend">
@@ -633,7 +706,10 @@
   <nav class="place-index" id="placeIndex"></nav>
   <div class="ro-badge">Read Only</div>
   <div class="acct" id="acct">
-    <span id="acctWho"></span>
+    <button class="acct-me" id="acctMe" title="프로필 설정">
+      <img id="acctAvatar" alt="">
+      <span id="acctWho"></span>
+    </button>
     <button id="acctBtn">로그인</button>
   </div>
 </header>
@@ -788,9 +864,52 @@
   </div>
 </div>
 
+<div class="modal-wrap" id="profileWrap">
+  <div class="modal-box">
+    <button class="close-x" id="pfClose" aria-label="닫기">✕</button>
+    <div class="auth-logo">Profile</div>
+    <h2>내 모험 이름</h2>
+    <p class="auth-sub">여기서 정한 이름과 사진이 지도 왼쪽 위 제목칸에 그대로 들어가요.</p>
+
+    <div class="prof-pic">
+      <div class="pp-frame" id="pfFrame" role="button" tabindex="0">
+        <span class="pp-hint">사진<br>추가</span><img id="pfImg" alt="">
+      </div>
+      <div class="pp-side">
+        원 안을 눌러 사진을 골라요.<br>
+        정사각형으로 잘려서 저장돼요.<br>
+        <button id="pfRemove">사진 지우기</button>
+      </div>
+    </div>
+    <input type="file" id="pfFile" accept="image/*" style="display:none">
+
+    <label for="pfNick">닉네임 (한글)</label>
+    <input type="text" id="pfNick" maxlength="10" placeholder="호호" autocomplete="off">
+    <label for="pfEn">영문 표기 (로고에 쓰여요)</label>
+    <input type="text" id="pfEn" maxlength="12" placeholder="HOHO" autocomplete="off">
+
+    <div class="prof-preview">
+      <div class="pv-sub" id="pvSub">HOHO&rsquo;s Bizarre Adventure</div>
+      <div class="pv-kr" id="pvKr">호호의 기묘한 모험</div>
+    </div>
+
+    <div class="auth-msg" id="pfMsg"></div>
+    <button class="btn primary auth-go" id="pfSave">저장</button>
+  </div>
+</div>
+
+<div class="music-panel" id="musicPanel">
+  <div class="mp-head">
+    <span class="mp-title">Music</span>
+    <button class="mp-toggle" id="mpToggle">켜기</button>
+  </div>
+  <input type="range" id="mpVol" min="0" max="100" step="1" value="90" aria-label="음량">
+  <div class="mp-val" id="mpVal">음량 90</div>
+</div>
+
 <div class="search" id="searchBox">
   <button class="s-btn" id="searchBtn" aria-label="도시 검색">⌕</button>
-  <input type="text" id="searchInput" placeholder="도시 검색 (예: 도쿄)" autocomplete="off">
+  <input type="text" id="searchInput" placeholder="장소 검색 (도쿄, 가루이자와…)" autocomplete="off">
   <div class="search-results" id="searchResults"></div>
 </div>
 
@@ -963,8 +1082,8 @@
      Supabase 설정 — 아래 두 줄만 채우면 계정 로그인이 켜집니다.
      비워두면 예전처럼 이 브라우저에만 저장되는 모드로 동작합니다.
      ====================================================================== */
-  var SUPABASE_URL = 'sb_publishable_3Ijq0C70pIa8Et_LS3562g_HHe4bJs-';
-  var SUPABASE_ANON_KEY = 'https://wbmdmrxxcrxbevxodrel.supabase.co/rest/v1/';
+  var SUPABASE_URL = 'https://wbmdmrxxcrxbevxodrel.supabase.co';
+  var SUPABASE_ANON_KEY = 'sb_publishable_3Ijq0C70pIa8Et_LS3562g_HHe4bJs-';
   /* ====================================================================== */
 
   var sb=null, session=null;
@@ -1219,7 +1338,7 @@
     Promise.all(ids.map(function(id){ return loadPhoto(id); })).then(function(urls){
       var photos={};
       ids.forEach(function(id,i){ if(urls[i]) photos[id]=urls[i]; });
-      var payload={ app:'hoho-travel-log', version:1, exportedAt:new Date().toISOString(), places:state.places, routes:state.routes, photos:photos };
+      var payload={ app:'hoho-travel-log', version:1, exportedAt:new Date().toISOString(), profile:profile, places:state.places, routes:state.routes, photos:photos };
       var blob=new Blob([JSON.stringify(payload)], {type:'application/json'});
       var a=document.createElement('a');
       a.href=URL.createObjectURL(blob);
@@ -1242,6 +1361,7 @@
         migrateState();
         var photos=data.photos||{};
         Object.keys(photos).forEach(function(id){ savePhoto(id, photos[id]); });
+        if(data.profile){ profile=normProfile(data.profile); applyProfile(); saveProfile(); }
         saveData();
         renderAll();
         toast('백업을 불러왔어요');
@@ -1254,6 +1374,7 @@
   var Music=(function(){
     var ctx=null, master=null, delay=null, fb=null, wet=null;
     var timer=null, playing=false, step=0, nextTime=0;
+    var vol=0.9;
     var BPM=74, STEP=60/BPM/2, LOOK=0.12;
     // D major pentatonic melody, 8 bars of eighth notes (null = rest)
     var MEL=[
@@ -1323,7 +1444,7 @@
       playing=true;
       master.gain.cancelScheduledValues(ctx.currentTime);
       master.gain.setValueAtTime(Math.max(master.gain.value,0.0001), ctx.currentTime);
-      master.gain.exponentialRampToValueAtTime(0.9, ctx.currentTime+1.2);
+      master.gain.exponentialRampToValueAtTime(Math.max(vol,0.0001), ctx.currentTime+1.2);
       nextTime=ctx.currentTime+0.08;
       timer=setInterval(tick,25);
       tick();
@@ -1337,44 +1458,95 @@
       master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
       master.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.7);
     }
+    function setVolume(v){
+      vol=Math.max(0,Math.min(1, isFinite(v)?v:0.9));
+      if(ctx && playing){
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value, ctx.currentTime);
+        master.gain.linearRampToValueAtTime(Math.max(vol,0.0001), ctx.currentTime+0.14);
+      }
+    }
     return {
       toggle:function(){ if(playing){ stop(); return false; } return start(); },
       start:start, stop:stop,
+      setVolume:setVolume,
+      getVolume:function(){ return vol; },
       isPlaying:function(){ return playing; },
       supported:!!(window.AudioContext||window.webkitAudioContext)
     };
   })();
 
   var MUSIC_KEY='travel-log:music';
+  var MUSIC_VOL_KEY='travel-log:music:vol';
   function musicPref(){
     try{ return localStorage.getItem(MUSIC_KEY)!=='off'; }catch(e){ return true; }
   }
   function setMusicPref(on){
     try{ localStorage.setItem(MUSIC_KEY, on?'on':'off'); }catch(e){}
   }
+  function volPref(){
+    var v=NaN;
+    try{ v=parseFloat(localStorage.getItem(MUSIC_VOL_KEY)); }catch(e){}
+    return (isFinite(v) && v>=0 && v<=1) ? v : 0.9;
+  }
+  function setVolPref(v){ try{ localStorage.setItem(MUSIC_VOL_KEY, String(v)); }catch(e){} }
+
   function paintMusic(){
     var on=Music.isPlaying();
     $('musicBtn').classList.toggle('on', on);
     $('musicIcon').textContent='♪';
     $('mapMusicBtn').classList.toggle('on', on);
     $('mapMusicBtn').textContent='♪';
+    var t=$('mpToggle');
+    if(t){ t.classList.toggle('on', on); t.textContent = on ? '끄기' : '켜기'; }
   }
   function toggleMusic(){
     var nowOn=Music.toggle();
     setMusicPref(nowOn);
     paintMusic();
-    if(!nowOn) toast('음악을 껐어요');
+  }
+  function paintVol(){
+    var v=Math.round(Music.getVolume()*100);
+    $('mpVol').value=v;
+    $('mpVal').textContent = v===0 ? '음소거' : ('음량 '+v);
+  }
+  function musicPanelOpen(){ return $('musicPanel').classList.contains('show'); }
+  function closeMusicPanel(){ $('musicPanel').classList.remove('show'); }
+  function openMusicPanel(anchor){
+    var pl=$('musicPanel');
+    pl.classList.add('show');
+    paintMusic(); paintVol();
+    var r=anchor.getBoundingClientRect();
+    var w=pl.offsetWidth||178, h=pl.offsetHeight||92;
+    var left=Math.min(Math.max(8, r.right-w), window.innerWidth-w-8);
+    var top=r.bottom+8;
+    if(top+h > window.innerHeight-8) top=Math.max(8, r.top-h-8);
+    pl.style.left=left+'px';
+    pl.style.top=top+'px';
+  }
+  function musicBtnClick(e){
+    e.stopPropagation();
+    if(musicPanelOpen()) closeMusicPanel(); else openMusicPanel(this);
   }
   if(Music.supported){
+    Music.setVolume(volPref());
     $('mapMusicBtn').classList.add('avail');
-    $('musicBtn').addEventListener('click', function(e){ e.stopPropagation(); toggleMusic(); });
-    $('mapMusicBtn').addEventListener('click', toggleMusic);
+    $('musicBtn').addEventListener('click', musicBtnClick);
+    $('mapMusicBtn').addEventListener('click', musicBtnClick);
+    $('musicPanel').addEventListener('click', function(e){ e.stopPropagation(); });
+    $('mpToggle').addEventListener('click', function(e){ e.stopPropagation(); toggleMusic(); });
+    $('mpVol').addEventListener('input', function(){
+      var v=(+this.value)/100;
+      Music.setVolume(v); setVolPref(v); paintVol();
+    });
+    document.addEventListener('click', closeMusicPanel);
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeMusicPanel(); });
     // browsers require a gesture before audio can start
     document.addEventListener('click', function once(){
       document.removeEventListener('click', once);
       if(musicPref() && !Music.isPlaying()){ Music.start(); paintMusic(); }
     });
-    paintMusic();
+    paintMusic(); paintVol();
   }else{
     $('musicBtn').style.display='none';
   }
@@ -1567,6 +1739,10 @@
         return v ? cloudStore.set(PHOTO_PREFIX+id, v) : null;
       }).catch(function(){});
     })).then(function(){
+      return localStore.get(PROFILE_KEY).then(function(v){
+        return v ? cloudStore.set(PROFILE_KEY, v) : null;
+      }).catch(function(){});
+    }).then(function(){
       return cloudStore.set(KEY, JSON.stringify({places:data.places||[], routes:data.routes||[]}));
     }).then(function(){
       toast('내 계정으로 기록을 옮겼어요');
@@ -1574,6 +1750,143 @@
       toast('일부 기록을 옮기지 못했어요');
     });
   }
+
+  // ---------- profile (닉네임 · 프로필 사진) ----------
+  var PROFILE_KEY = 'travel-log:profile';
+  var DEF_NICK = '호호', DEF_EN = 'HOHO';
+  var profile = { nick:'', en:'', avatar:'' };
+
+  var OMARK = '<svg class="omark" viewBox="0 0 100 100" aria-hidden="true">'+
+    '<circle cx="50" cy="50" r="46" fill="#241D1A"/>'+
+    '<circle cx="50" cy="50" r="46" fill="none" stroke="#E0017C" stroke-width="4"/>'+
+    '<path fill="#E0017C" fill-rule="evenodd" d="M50 20 C35 20 24 31.5 24 46 C24 64 50 84 50 84 C50 84 76 64 76 46 C76 31.5 65 20 50 20 Z M50 36 a10 10 0 1 1 0 20 a10 10 0 1 1 0 -20 Z"/>'+
+    '</svg>';
+
+  function profNick(){ return (profile.nick||'').trim() || DEF_NICK; }
+  function profEn(){ return (profile.en||'').trim() || DEF_EN; }
+
+  function normProfile(o){
+    if(!o || typeof o!=='object') o={};
+    return {
+      nick: typeof o.nick==='string' ? o.nick.slice(0,10) : '',
+      en:   typeof o.en==='string'   ? o.en.slice(0,12)   : '',
+      avatar: typeof o.avatar==='string' && o.avatar.indexOf('data:image')===0 ? o.avatar : ''
+    };
+  }
+
+  function applyProfile(){
+    var en=profEn(), nick=profNick();
+    // the pin glyph stands in for a trailing O, as in the original HOHO wordmark
+    var lead = /[oO]$/.test(en) ? en.slice(0,-1) : en;
+    var word=$('logoWord');
+    word.innerHTML = esc(lead) + OMARK;
+    word.setAttribute('aria-label', en);
+    word.style.fontSize = Math.max(23, Math.min(47, Math.round(190/Math.max(en.length,3)))) + 'px';
+    $('logoSub').innerHTML = esc(en) + '&rsquo;s Bizarre Adventure';
+    $('logoKr').innerHTML = '<span class="arw">\u2015</span> ' + esc(nick) + '의 기묘한 모험 <span class="arw">\u2192</span>';
+    var av=profile.avatar||'';
+    $('avatarSeal').classList.toggle('show', !!av);
+    if(av) $('avatarSealImg').src=av;
+    var ai=$('acctAvatar');
+    ai.classList.toggle('show', !!av);
+    if(av) ai.src=av;
+    document.title = en + '\u2019s Bizarre Adventure — 여행 기록';
+  }
+
+  function loadProfile(){
+    return store.get(PROFILE_KEY).then(function(v){
+      var o=null;
+      try{ o = v ? JSON.parse(v) : null; }catch(e){ o=null; }
+      profile = normProfile(o);
+      applyProfile();
+    }).catch(function(){
+      profile = normProfile(null);
+      applyProfile();
+    });
+  }
+  function saveProfile(){
+    if(READONLY) return Promise.resolve();
+    return store.set(PROFILE_KEY, JSON.stringify(profile)).catch(function(){
+      toast('프로필 저장에 실패했어요');
+    });
+  }
+
+  // square-crops and shrinks the picture so it stays a few KB in storage
+  function squareAvatar(file){
+    return new Promise(function(res){
+      var reader=new FileReader();
+      reader.onerror=function(){ res(null); };
+      reader.onload=function(){
+        var img=new Image();
+        img.onerror=function(){ res(null); };
+        img.onload=function(){
+          var S=176, side=Math.min(img.width, img.height);
+          if(!side){ res(null); return; }
+          var sx=(img.width-side)/2, sy=(img.height-side)/2;
+          var c=document.createElement('canvas'); c.width=S; c.height=S;
+          var cx=c.getContext('2d');
+          cx.fillStyle='#fff'; cx.fillRect(0,0,S,S);
+          cx.drawImage(img, sx, sy, side, side, 0, 0, S, S);
+          res(c.toDataURL('image/jpeg', 0.82));
+        };
+        img.src=reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  var pfDraft={ nick:'', en:'', avatar:'' };
+
+  function pfPaint(){
+    var en=(pfDraft.en||'').trim() || DEF_EN;
+    var nick=(pfDraft.nick||'').trim() || DEF_NICK;
+    $('pvSub').innerHTML = esc(en) + '&rsquo;s Bizarre Adventure';
+    $('pvKr').textContent = nick + '의 기묘한 모험';
+    var fr=$('pfFrame');
+    fr.classList.toggle('has', !!pfDraft.avatar);
+    if(pfDraft.avatar) $('pfImg').src=pfDraft.avatar;
+  }
+  function openProfile(){
+    pfDraft={ nick:profile.nick||'', en:profile.en||'', avatar:profile.avatar||'' };
+    $('pfNick').value=pfDraft.nick;
+    $('pfEn').value=pfDraft.en;
+    $('pfMsg').textContent='';
+    pfPaint();
+    $('profileWrap').classList.add('show');
+    setTimeout(function(){ $('pfNick').focus(); }, 40);
+  }
+  function closeProfile(){ $('profileWrap').classList.remove('show'); }
+
+  $('acctMe').addEventListener('click', openProfile);
+  $('pfClose').addEventListener('click', closeProfile);
+  $('profileWrap').addEventListener('click', function(e){ if(e.target===this) closeProfile(); });
+  $('pfNick').addEventListener('input', function(){ pfDraft.nick=this.value; pfPaint(); });
+  $('pfEn').addEventListener('input', function(){ pfDraft.en=this.value; pfPaint(); });
+  $('pfEn').addEventListener('keydown', function(e){ if(e.key==='Enter') $('pfSave').click(); });
+  $('pfNick').addEventListener('keydown', function(e){ if(e.key==='Enter') $('pfEn').focus(); });
+  $('pfFrame').addEventListener('click', function(){ $('pfFile').click(); });
+  $('pfFrame').addEventListener('keydown', function(e){
+    if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('pfFile').click(); }
+  });
+  $('pfRemove').addEventListener('click', function(){ pfDraft.avatar=''; pfPaint(); });
+  $('pfFile').addEventListener('change', function(){
+    var f=this.files && this.files[0];
+    this.value='';
+    if(!f) return;
+    $('pfMsg').textContent='사진을 불러오는 중…';
+    $('pfMsg').classList.add('ok');
+    squareAvatar(f).then(function(url){
+      $('pfMsg').textContent = url ? '' : '사진을 읽을 수 없어요. 다른 파일로 해볼래요?';
+      if(url){ pfDraft.avatar=url; pfPaint(); }
+    });
+  });
+  $('pfSave').addEventListener('click', function(){
+    profile = normProfile(pfDraft);
+    applyProfile();
+    saveProfile();
+    closeProfile();
+    toast('프로필을 저장했어요');
+  });
 
   // ---------- map ----------
   var W=window.innerWidth, H=window.innerHeight;
@@ -1758,11 +2071,12 @@
   // loads from the currently active store; data.json is only used for #view share links
   function loadAndBoot(){
     state.places=[]; state.routes=[]; photoCache={};
-    return loadData().then(function(data){
+    return loadProfile().then(function(){ return loadData(); }).then(function(data){
       if(READONLY){
         return fetchSeed().then(function(seed){
           if(seed){
             applyData(seed);
+            if(seed.profile){ profile=normProfile(seed.profile); applyProfile(); }
             var photos=seed.photos||{};
             Object.keys(photos).forEach(function(id){ photoCache[id]=photos[id]; });
           }else if(data){
@@ -2198,21 +2512,131 @@
     $('searchResults').classList.remove('show');
     $('searchBox').classList.remove('open');
   }
+  var localHits=[], webHits=[], webState='', searchTimer=null, searchSeq=0;
+
   function runSearch(){
-    var q=$('searchInput').value.trim().toLowerCase();
+    var q=$('searchInput').value.trim();
     var res=$('searchResults');
-    searchSel=-1; searchHits=[];
-    if(!q){ res.classList.remove('show'); return; }
-    for(var i=0;i<CITIES.length&&searchHits.length<8;i++){
-      var c=CITIES[i];
-      if(c[0].toLowerCase().indexOf(q)>-1 || c[1].toLowerCase().indexOf(q)>-1) searchHits.push(c);
+    searchSel=-1;
+    if(searchTimer){ clearTimeout(searchTimer); searchTimer=null; }
+    if(!q){
+      searchHits=[]; localHits=[]; webHits=[]; webState='';
+      res.classList.remove('show');
+      return;
     }
-    res.innerHTML = searchHits.length
-      ? searchHits.map(function(c,i){
-          return '<button data-i="'+i+'"><span>'+esc(c[0])+'</span><span class="en">'+esc(c[1])+' · '+esc(c[2])+'</span></button>';
-        }).join('')
-      : '<div class="none">검색 결과가 없어요. 지도를 직접 클릭해 핀을 찍을 수도 있어요.</div>';
+    var lq=q.toLowerCase();
+    localHits=[];
+    for(var i=0;i<CITIES.length && localHits.length<6;i++){
+      var c=CITIES[i];
+      if(c[0].toLowerCase().indexOf(lq)>-1 || c[1].toLowerCase().indexOf(lq)>-1) localHits.push(c);
+    }
+    webHits=[];
+    searchSeq++;
+    if(q.length<2){ webState=''; paintSearch(); return; }
+    webState='loading';
+    paintSearch();
+    var seq=searchSeq;
+    searchTimer=setTimeout(function(){ webSearch(q, seq); }, 380);
+  }
+
+  function hitBtn(c, i){
+    var sub=c[1]||'';
+    if(c[2]) sub += (sub?' · ':'') + c[2];
+    return '<button data-i="'+i+'"><span>'+esc(c[0])+'</span><span class="en">'+esc(sub)+'</span></button>';
+  }
+
+  function paintSearch(){
+    var res=$('searchResults'), html='';
+    searchHits=localHits.concat(webHits);
+    if(localHits.length){
+      html += '<div class="sec">수록된 도시</div>';
+      html += localHits.map(function(c,i){ return hitBtn(c,i); }).join('');
+    }
+    if(webState==='loading'){
+      html += '<div class="sec">전 세계 검색 <span class="tag">찾는 중…</span></div>';
+    }else if(webHits.length){
+      html += '<div class="sec">전 세계 검색 <span class="tag">OpenStreetMap</span></div>';
+      html += webHits.map(function(c,i){ return hitBtn(c, localHits.length+i); }).join('');
+    }else if(!localHits.length){
+      if(webState==='fail'){
+        html += '<div class="none">검색 서버에 연결하지 못했어요. 지도를 직접 클릭해 핀을 찍을 수 있어요.</div>';
+      }else if(webState==='none' || webState===''){
+        html += '<div class="none">검색 결과가 없어요. 지도를 직접 클릭해 핀을 찍을 수도 있어요.</div>';
+      }
+    }
+    res.innerHTML=html;
     res.classList.add('show');
+    paintSel();
+  }
+
+  function webSearch(q, seq){
+    photonSearch(q).then(function(list){
+      if(seq!==searchSeq) return null;
+      if(list && list.length){
+        webHits=list; webState='ok'; paintSearch();
+        return null;
+      }
+      // Photon indexes local-language names; Korean spellings of foreign places
+      // usually only exist as alternative names, which Nominatim does cover.
+      return nominatimSearch(q).then(function(list2){
+        if(seq!==searchSeq) return;
+        webHits=list2||[];
+        webState=webHits.length?'ok':'none';
+        paintSearch();
+      });
+    }).catch(function(){
+      if(seq!==searchSeq) return;
+      webHits=[]; webState='fail'; paintSearch();
+    });
+  }
+
+  function getJSON(url){
+    if(typeof fetch!=='function') return Promise.reject(new Error('no fetch'));
+    return fetch(url).then(function(r){
+      if(!r.ok) throw new Error('http '+r.status);
+      return r.json();
+    });
+  }
+
+  function photonSearch(q){
+    var u='https://photon.komoot.io/api/?limit=8&lang=en&q='+encodeURIComponent(q);
+    return getJSON(u).then(function(j){
+      var seen={}, out=[];
+      (j.features||[]).forEach(function(f){
+        var pr=f.properties||{}, g=f.geometry||{};
+        if(!g.coordinates || g.coordinates.length<2) return;
+        var lat=+g.coordinates[1], lng=+g.coordinates[0];
+        if(!isFinite(lat)||!isFinite(lng)) return;
+        var name=pr.name || pr.city || pr.state || pr.country;
+        if(!name) return;
+        var parts=[];
+        [pr.city, pr.state].forEach(function(x){
+          if(x && x!==name && parts.indexOf(x)<0) parts.push(x);
+        });
+        if(pr.country && pr.country!==name) parts.push(koCountry(pr.country));
+        var sub=parts.join(', ');
+        var k=name+'|'+sub;
+        if(seen[k]) return;
+        seen[k]=1;
+        out.push([name, sub, '', lat, lng]);
+      });
+      return out.slice(0,6);
+    });
+  }
+
+  function nominatimSearch(q){
+    var u='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=ko&q='+encodeURIComponent(q);
+    return getJSON(u).then(function(list){
+      return (list||[]).map(function(r){
+        var dn=String(r.display_name||'').split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+        var name=(r.name && String(r.name).trim()) || dn[0] || q;
+        var tail=dn.slice(1);
+        var sub=[];
+        if(tail.length>2) sub.push(tail[tail.length-3]);
+        if(tail.length>0) sub.push(tail[tail.length-1]);
+        return [name, sub.join(', '), '', +r.lat, +r.lon];
+      }).filter(function(c){ return isFinite(c[3]) && isFinite(c[4]); });
+    }).catch(function(){ return []; });
   }
   $('searchResults').addEventListener('click', function(e){
     var btn=e.target.closest('button[data-i]'); if(!btn) return;
