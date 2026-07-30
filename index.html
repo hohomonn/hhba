@@ -42,7 +42,7 @@
   .logo-wrap{text-align:center;padding:2px 0 3px}
   .logo{
     font-family:Georgia,'Times New Roman',serif;font-weight:700;
-    font-size:47px;line-height:.95;letter-spacing:-.015em;
+    font-size:calc(47px * var(--logo-scale, 1));line-height:.95;letter-spacing:-.015em;
     color:var(--accent);
     -webkit-text-stroke:1px var(--ink);
     text-shadow:2.5px 2.5px 0 var(--gold);
@@ -526,6 +526,37 @@
   .auth-msg.ok{color:var(--muted)}
   .auth-go{width:100%;margin-top:14px;padding:9px}
 
+  /* ---------- cartouche: collapse ---------- */
+  .c-collapse{
+    position:absolute;top:4px;right:5px;z-index:2;
+    width:26px;height:26px;padding:0;line-height:1;
+    background:none;border:none;cursor:pointer;
+    font-family:var(--mono);font-size:17px;font-weight:700;color:var(--muted);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .c-collapse:hover{color:var(--accent)}
+  .mini-bar{
+    display:none;align-items:center;gap:9px;
+    background:none;border:none;padding:0;cursor:pointer;text-align:left;
+  }
+  .cartouche.mini .mini-bar{display:flex}
+  .mini-bar img{
+    width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none;
+    border:1.5px solid var(--ink);display:none;
+  }
+  .mini-bar img.show{display:block}
+  .mini-txt{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .mini-title{font-size:12.5px;font-weight:800;color:var(--accent);letter-spacing:.05em;white-space:nowrap}
+  .mini-stats{font-family:var(--mono);font-size:9.5px;color:var(--muted);white-space:nowrap}
+  .cartouche.mini{padding:9px 36px 9px 12px;max-width:none}
+  .cartouche.mini .logo-wrap,
+  .cartouche.mini .stats,
+  .cartouche.mini .legend,
+  .cartouche.mini .c-actions,
+  .cartouche.mini .place-index,
+  .cartouche.mini .ro-badge,
+  .cartouche.mini .acct{display:none}
+
   /* ---------- search: sections + web results ---------- */
   .search-results .sec{
     font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;
@@ -648,7 +679,7 @@
 
   @media (max-width:640px){
     .cartouche{top:12px;left:12px;max-width:246px;padding:11px 13px 9px}
-    .logo{font-size:38px}
+    .logo{font-size:calc(38px * var(--logo-scale, 1))}
     .logo-sub{letter-spacing:.14em}
     .coords{display:none}
     .zoomctl{bottom:14px;right:12px}
@@ -681,6 +712,14 @@
 <div id="map"></div>
 
 <header class="cartouche" id="cartouche">
+  <button class="c-collapse" id="cCollapse" aria-label="접기" aria-expanded="true">−</button>
+  <div class="mini-bar" id="miniBar" role="button" tabindex="0">
+    <img id="miniAvatar" alt="">
+    <span class="mini-txt">
+      <span class="mini-title" id="miniTitle">호호의 기묘한 모험</span>
+      <span class="mini-stats" id="miniStats">0개국 · 0곳</span>
+    </span>
+  </div>
   <div class="logo-wrap">
     <div class="avatar-seal" id="avatarSeal"><img id="avatarSealImg" alt="프로필 사진"></div>
     <h1 class="logo" id="logoWord" aria-label="HOHO">HOH<svg class="omark" viewBox="0 0 100 100" aria-hidden="true">
@@ -1208,6 +1247,10 @@
   function $(id){ return document.getElementById(id); }
   function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function thisMonth(){
+    var d=new Date(), m=d.getMonth()+1;
+    return d.getFullYear()+'-'+(m<10?'0':'')+m;
+  }
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });}
@@ -1296,16 +1339,49 @@
 
   var store=localStore;   // swapped to cloudStore after login
 
-  function loadData(){
-    return store.get(KEY).then(function(v){
+  function readBlob(st){
+    return (st||store).get(KEY).then(function(v){
       return v ? JSON.parse(v) : null;
     }).catch(function(){ return null; });
   }
+
+  function markPersisted(){
+    var rows = stateToRows();
+    persisted = { places:rowIndex(rows.places), trips:rowIndex(rows.trips), records:rowIndex(rows.records) };
+  }
+
+  function loadData(){
+    cameFromKv = false;
+    fromTables = false;
+    persisted = null;
+    if(!rowsMode()) return readBlob();
+    return loadRows().then(function(d){
+      if(d){ fromTables = true; return d; }
+      if(tablesOk === false) return readBlob();   // tables missing: old path
+      // tables are there but empty - bring the old blob across, once
+      return readBlob(cloudStore).then(function(old){
+        if(!old) return null;
+        var has = (old.places||[]).length || (old.routes||[]).length;
+        if(!has) return null;
+        cameFromKv = true;
+        return old;
+      });
+    });
+  }
+
   function saveData(){
     if(READONLY) return;
-    store.set(KEY, JSON.stringify(state)).catch(function(e){
-      toast(store===cloudStore ? '클라우드 저장에 실패했어요. 연결을 확인해주세요' : '저장에 실패했어요');
-    });
+    if(!rowsMode()){
+      store.set(KEY, JSON.stringify(state)).catch(function(){
+        toast(store===cloudStore ? '클라우드 저장에 실패했어요. 연결을 확인해주세요' : '저장에 실패했어요');
+      });
+      return;
+    }
+    if(saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      saveTimer = null;
+      flushRows().catch(function(){});
+    }, 400);
   }
   function savePhoto(id,dataURL){
     photoCache[id]=dataURL;
@@ -1781,7 +1857,8 @@
     var word=$('logoWord');
     word.innerHTML = esc(lead) + OMARK;
     word.setAttribute('aria-label', en);
-    word.style.fontSize = Math.max(23, Math.min(47, Math.round(190/Math.max(en.length,3)))) + 'px';
+    // a scale factor rather than a fixed size, so the mobile rule still wins
+    word.style.setProperty('--logo-scale', String(Math.max(0.5, Math.min(1, 4/Math.max(en.length,1)))));
     $('logoSub').innerHTML = esc(en) + '&rsquo;s Bizarre Adventure';
     $('logoKr').innerHTML = '<span class="arw">\u2015</span> ' + esc(nick) + '의 기묘한 모험 <span class="arw">\u2192</span>';
     var av=profile.avatar||'';
@@ -1790,6 +1867,7 @@
     var ai=$('acctAvatar');
     ai.classList.toggle('show', !!av);
     if(av) ai.src=av;
+    paintMini();
     document.title = en + '\u2019s Bizarre Adventure — 여행 기록';
   }
 
@@ -1887,6 +1965,45 @@
     closeProfile();
     toast('프로필을 저장했어요');
   });
+
+  // ---------- cartouche: collapse / expand ----------
+  var MINI_KEY='travel-log:cartouche-mini';
+
+  function paintMini(){
+    $('miniTitle').textContent = profNick() + '의 기묘한 모험';
+    var av=profile.avatar||'';
+    var mi=$('miniAvatar');
+    mi.classList.toggle('show', !!av);
+    if(av) mi.src=av;
+  }
+  function isMini(){ return $('cartouche').classList.contains('mini'); }
+  function setMini(on, remember){
+    var c=$('cartouche');
+    c.classList.toggle('mini', on);
+    if(on) c.classList.remove('open');   // the pin list can't be open while collapsed
+    var b=$('cCollapse');
+    b.textContent = on ? '+' : '\u2212';
+    b.setAttribute('aria-label', on ? '펼치기' : '접기');
+    b.setAttribute('aria-expanded', on ? 'false' : 'true');
+    if(remember !== false){
+      try{ localStorage.setItem(MINI_KEY, on ? '1' : '0'); }catch(e){}
+    }
+    paintMini();
+  }
+  $('cCollapse').addEventListener('click', function(e){
+    e.stopPropagation();
+    setMini(!isMini());
+  });
+  $('miniBar').addEventListener('click', function(){ setMini(false); });
+  $('miniBar').addEventListener('keydown', function(e){
+    if(e.key==='Enter' || e.key===' '){ e.preventDefault(); setMini(false); }
+  });
+  (function(){
+    var pref=null;
+    try{ pref=localStorage.getItem(MINI_KEY); }catch(e){}
+    // first visit on a phone starts collapsed; after that we honour the choice
+    setMini(pref!=null ? pref==='1' : window.innerWidth<=640, false);
+  })();
 
   // ---------- map ----------
   var W=window.innerWidth, H=window.innerHeight;
@@ -2065,7 +2182,167 @@
   function applyData(d){
     state.places=d.places||[];
     state.routes=d.routes||[];
-    if(migrateState()) saveData();
+    // snapshot before any backfill, so only genuine changes get written
+    if(fromTables){ markPersisted(); fromTables=false; }
+    var dirty=migrateState();
+    if(cameFromKv){
+      // everything is new as far as the tables are concerned
+      persisted=null;
+      cameFromKv=false;
+      if(rowsMode()){
+        flushRows().then(function(){
+          toast('기록을 새 구조로 역셔다어요');
+        }).catch(function(){});
+        return;
+      }
+    }
+    if(dirty) saveData();
+  }
+
+  // ---------- row storage: places / trips / records ----------
+  // The blob in `kv` stays put as a fallback. Photos and the profile also
+  // remain key-value, since that is what they are.
+  var tablesOk = null;          // null = untried, true/false = known
+  var cameFromKv = false, fromTables = false;
+  var persisted = null;         // last thing we know is in the tables
+  var saveTimer = null, savingNow = false, saveAgain = false;
+
+  function rowsMode(){ return !!(CLOUD && session && tablesOk !== false); }
+
+  function rowSig(o){ return JSON.stringify(o); }
+  function rowIndex(list){
+    var m = {};
+    list.forEach(function(r){ m[r.id] = rowSig(r); });
+    return m;
+  }
+
+  function loadRows(){
+    return Promise.all([
+      sb.from('places').select('*'),
+      sb.from('trips').select('*'),
+      sb.from('records').select('*')
+    ]).then(function(res){
+      res.forEach(function(r){ if(r.error) throw r.error; });
+      tablesOk = true;
+      var placeRows = res[0].data || [], tripRows = res[1].data || [], recRows = res[2].data || [];
+      if(!placeRows.length && !tripRows.length && !recRows.length) return null;
+
+      var byId = {};
+      var places = placeRows.map(function(r){
+        var pl = {
+          id:r.id, name:r.name, type:r.type||'trip', rating:r.rating||0,
+          lat:+r.lat, lng:+r.lng,
+          country:r.country||'', countryName:r.country_name||'',
+          trips:[]
+        };
+        byId[pl.id] = pl;
+        return pl;
+      });
+      recRows.forEach(function(r){
+        var pl = byId[r.place_id];
+        if(!pl) return;
+        pl.trips.push({
+          id:r.id, routeId:r.trip_id||'', title:r.title||'',
+          start:r.date||'', end:r.end_date||'', note:r.note||'',
+          photos:Array.isArray(r.photos)?r.photos:[],
+          days:Array.isArray(r.days)?r.days:[]
+        });
+      });
+      var routes = tripRows.map(function(r){
+        return {
+          id:r.id, name:r.name, start:r.start_month||'',
+          stops:Array.isArray(r.stops)?r.stops:[],
+          status:r.status||'done', visibility:r.visibility||'private',
+          plan:(r.plan && typeof r.plan==='object') ? r.plan : {}
+        };
+      });
+      return { places:places, routes:routes };
+    }).catch(function(e){
+      // most likely the tables aren't there yet - carry on with the old blob
+      tablesOk = false;
+      return null;
+    });
+  }
+
+  function stateToRows(){
+    var uidv = session ? session.user.id : null;
+    var places = [], records = [], trips = [];
+    state.places.forEach(function(pl){
+      places.push({
+        id:pl.id, user_id:uidv, name:pl.name||'', type:pl.type||'trip',
+        rating:pl.rating||0, lat:pl.lat, lng:pl.lng,
+        country:pl.country||null, country_name:pl.countryName||null
+      });
+      (pl.trips||[]).forEach(function(t){
+        records.push({
+          id:t.id, user_id:uidv, place_id:pl.id, trip_id:t.routeId||null,
+          title:t.title||null, date:t.start||null, end_date:t.end||null,
+          note:t.note||null, photos:t.photos||[], days:t.days||[]
+        });
+      });
+    });
+    state.routes.forEach(function(r){
+      trips.push({
+        id:r.id, user_id:uidv, name:r.name||'', status:r.status||'done',
+        visibility:r.visibility||'private', start_month:r.start||null,
+        stops:r.stops||[], plan:r.plan||{}
+      });
+    });
+    return { places:places, trips:trips, records:records };
+  }
+
+  function upsert(tbl, rows){
+    return sb.from(tbl).upsert(rows, { onConflict:'id' }).then(function(r){
+      if(r.error) throw r.error;
+    });
+  }
+  function delRows(tbl, ids){
+    return sb.from(tbl).delete().in('id', ids).then(function(r){
+      if(r.error) throw r.error;
+    });
+  }
+
+  // writes only what actually changed
+  function flushRows(){
+    if(savingNow){ saveAgain = true; return Promise.resolve(); }
+    savingNow = true;
+
+    var rows = stateToRows();
+    var cur = { places:rowIndex(rows.places), trips:rowIndex(rows.trips), records:rowIndex(rows.records) };
+    var prev = persisted || { places:{}, trips:{}, records:{} };
+
+    function changed(tbl){
+      return rows[tbl].filter(function(r){ return cur[tbl][r.id] !== prev[tbl][r.id]; });
+    }
+    function removed(tbl){
+      return Object.keys(prev[tbl]).filter(function(id){ return !(id in cur[tbl]); });
+    }
+
+    // parents before children on the way in, children before parents on the way out
+    var steps = [];
+    ['places','trips'].forEach(function(t){
+      var c = changed(t); if(c.length) steps.push(function(){ return upsert(t, c); });
+    });
+    var cr = changed('records');
+    if(cr.length) steps.push(function(){ return upsert('records', cr); });
+    var dr = removed('records');
+    if(dr.length) steps.push(function(){ return delRows('records', dr); });
+    ['places','trips'].forEach(function(t){
+      var d = removed(t); if(d.length) steps.push(function(){ return delRows(t, d); });
+    });
+
+    var chain = Promise.resolve();
+    steps.forEach(function(fn){ chain = chain.then(fn); });
+
+    return chain.then(function(){
+      persisted = cur;                       // only trust it once it landed
+      savingNow = false;
+      if(saveAgain){ saveAgain = false; return flushRows(); }
+    }).catch(function(e){
+      savingNow = false; saveAgain = false;
+      toast('클라우드 저장에 실패했어요. 연결을 확인해주세요');
+      throw e;
+    });
   }
 
   // loads from the currently active store; data.json is only used for #view share links
@@ -2114,7 +2391,49 @@
         r.stops=r.placeIds.map(function(id){ return {p:id}; });
         delete r.placeIds; dirty=true;
       }
+      if(!r.stops) r.stops=[];
+      if(!r.plan || typeof r.plan!=='object'){ r.plan={}; }
+      if(!r.visibility){ r.visibility='private'; dirty=true; }
+      if(!r.status){
+        // a journey starting in a month still ahead of us is a plan, not a record
+        r.status = (r.start && r.start > thisMonth()) ? 'plan' : 'done';
+        dirty=true;
+      }
     });
+
+    // every record needs an id of its own before it can become a row
+    state.places.forEach(function(pl){
+      (pl.trips||[]).forEach(function(t){
+        if(!t.id){ t.id=uid(); dirty=true; }
+      });
+    });
+
+    // pin each record to the journey it belongs to, once, instead of
+    // guessing from the date every time it is drawn
+    var unlinked=false;
+    state.places.forEach(function(pl){
+      (pl.trips||[]).forEach(function(t){ if(t.routeId===undefined) unlinked=true; });
+    });
+    if(unlinked){
+      var claimed={};
+      state.routes.forEach(function(r){
+        (r.stops||[]).forEach(function(st){
+          if(!st.p) return;
+          var pl=getPlace(st.p);
+          if(!pl) return;
+          journeyTripsFor(r, pl).forEach(function(t){
+            if(t.routeId===undefined && !claimed[t.id]){
+              t.routeId=r.id; claimed[t.id]=1; dirty=true;
+            }
+          });
+        });
+      });
+      state.places.forEach(function(pl){
+        (pl.trips||[]).forEach(function(t){
+          if(t.routeId===undefined){ t.routeId=''; dirty=true; }
+        });
+      });
+    }
     return dirty;
   }
 
@@ -2414,10 +2733,12 @@
   }
   // records at a stop that fall within the journey window (journey month ~ +3 months)
   function journeyTripsFor(route, place){
-    if(!route.start) return [];
-    var from=dateCmp(route.start);
-    var to=dateCmp(addMonths(route.start,4));
+    var from = route.start ? dateCmp(route.start) : null;
+    var to   = route.start ? dateCmp(addMonths(route.start,4)) : null;
     return (place.trips||[]).filter(function(t){
+      // an explicit link wins, and a record linked elsewhere is never borrowed
+      if(t.routeId) return t.routeId===route.id;
+      if(!from) return false;
       var s=dateCmp(t.start||'');
       return s>=from && s<to;
     }).sort(function(a,b){ return dateCmp(a.start||'').localeCompare(dateCmp(b.start||'')); });
@@ -3120,6 +3441,7 @@
       if(t){ t.title=data.title; t.start=data.start; t.end=data.end; t.note=data.note; t.photos=data.photos; t.days=data.days; }
     }else{
       data.id=uid();
+      data.routeId=focusRouteId||'';
       p.trips.push(data);
     }
     saveData(); hideTripForm(); renderTrips(); renderStatsIndex();
@@ -3163,6 +3485,7 @@
       tripCount+=(p.trips||[]).length;
     });
     $('stats').textContent=Object.keys(countries).length+'개국 · '+state.places.length+'곳 · '+tripCount+'번의 기록';
+    $('miniStats').textContent=Object.keys(countries).length+'개국 · '+state.places.length+'곳';
 
     var idx=$('placeIndex');
     if(!state.places.length){
