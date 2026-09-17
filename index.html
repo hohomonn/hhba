@@ -526,6 +526,33 @@
   .auth-msg.ok{color:var(--muted)}
   .auth-go{width:100%;margin-top:14px;padding:9px}
 
+  /* ---------- region picker ---------- */
+  .d-country{cursor:pointer}
+  .d-country:hover{color:var(--accent);text-decoration:underline}
+  #rgSearch{width:100%;box-sizing:border-box;margin-top:14px}
+  .rg-list{
+    margin-top:10px;max-height:250px;overflow-y:auto;
+    border:1px solid var(--hairline);background:#FCFAF2;
+  }
+  .rg-list button{
+    display:flex;width:100%;box-sizing:border-box;gap:8px;align-items:baseline;
+    background:none;border:none;border-bottom:1px solid var(--hairline);
+    padding:8px 11px;cursor:pointer;text-align:left;font-family:var(--sans);
+    font-size:12.5px;color:var(--ink);
+  }
+  .rg-list button:last-child{border-bottom:none}
+  .rg-list button:hover{background:rgba(224,1,124,.07)}
+  .rg-list button.on{color:var(--accent);font-weight:800}
+  .rg-list .en{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-left:auto;flex:none}
+  .rg-none{padding:12px;font-size:12px;color:var(--muted);text-align:center}
+
+  /* ---------- journey: land travel ---------- */
+  .jc-tools #jcLand.on{border-color:var(--accent);color:var(--accent)}
+  .jc-hint{
+    font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:8px;
+    padding-top:8px;border-top:1px solid var(--hairline);
+  }
+
   /* ---------- cartouche: collapse ---------- */
   .c-collapse{
     position:absolute;top:4px;right:5px;z-index:2;
@@ -1003,8 +1030,22 @@
   <div class="jc-date" id="jcDate"></div>
   <div class="jc-stops" id="jcStops"></div>
   <div class="jc-tools">
+    <button class="btn tiny ghost" id="jcLand" title="경로가 지나간 지역도 방문으로 칩니다">🚗 육로</button>
     <button class="btn tiny ghost" id="jcEdit">✎ 수정</button>
     <button class="btn tiny ghost danger" id="jcDelete">삭제</button>
+  </div>
+  <div class="jc-hint" id="jcHint"></div>
+</div>
+
+<div class="modal-wrap" id="regionWrap">
+  <div class="modal-box">
+    <button class="close-x" id="rgClose" aria-label="닫기">✕</button>
+    <div class="auth-logo">Region</div>
+    <h2>지역 고르기</h2>
+    <p class="auth-sub">지도에서 색칠할 지역을 골라요. 발리나 보라카이처럼 작은 섬은 지도 데이터에 모양이 없어서 자동으로 못 찾아요.</p>
+    <input type="text" id="rgSearch" placeholder="나라 검색 (한글 또는 영문)" autocomplete="off">
+    <div class="rg-list" id="rgList"></div>
+    <button class="btn ghost auth-go" id="rgAuto">좌표로 다시 찾기</button>
   </div>
 </div>
 
@@ -2054,6 +2095,19 @@
     }
     return false;
   }
+  var regionGeom={};   // id -> geometry, for the "still in the same region?" shortcut
+
+  function indexRegions(){
+    regionGeom={};
+    stateFeatures.forEach(function(f){ regionGeom['US-'+f.id]=f.geometry; });
+    features.forEach(function(f){ regionGeom[f.id]=f.geometry; });
+  }
+  function regionContains(id, lat, lng){
+    var g=regionGeom[id];
+    if(!g) return false;
+    try{ return pointInGeom(lng, lat, g); }catch(e){ return false; }
+  }
+
   function regionAtLL(lat,lng){
     var i,f;
     try{
@@ -2097,6 +2151,7 @@
         if(typeof usTopo==='string') usTopo=JSON.parse(usTopo);
         var objKey=Object.keys(usTopo.objects)[0];
         stateFeatures=topojson.feature(usTopo, usTopo.objects[objKey]).features;
+        indexRegions();
         statesG.selectAll('path').data(stateFeatures).enter().append('path')
           .attr('d', path)
           .attr('fill', css('--land'))
@@ -2253,7 +2308,8 @@
           id:r.id, name:r.name, start:r.start_month||'',
           stops:Array.isArray(r.stops)?r.stops:[],
           status:r.status||'done', visibility:r.visibility||'private',
-          plan:(r.plan && typeof r.plan==='object') ? r.plan : {}
+          plan:(r.plan && typeof r.plan==='object') ? r.plan : {},
+          land:!!(r.plan && r.plan.land)
         };
       });
       return { places:places, routes:routes };
@@ -2282,10 +2338,13 @@
       });
     });
     state.routes.forEach(function(r){
+      var extras={};
+      Object.keys(r.plan||{}).forEach(function(k){ extras[k]=r.plan[k]; });
+      extras.land = !!r.land;
       trips.push({
         id:r.id, user_id:uidv, name:r.name||'', status:r.status||'done',
         visibility:r.visibility||'private', start_month:r.start||null,
-        stops:r.stops||[], plan:r.plan||{}
+        stops:r.stops||[], plan:extras
       });
     });
     return { places:places, trips:trips, records:records };
@@ -2531,11 +2590,61 @@
       .attr('display', function(d){ return show[d.id]?null:'none'; });
   }
 
+  function stopLL(s){
+    if(s.p){
+      var pl=getPlace(s.p);
+      return pl ? [pl.lat, pl.lng] : null;
+    }
+    return s.ll ? [s.ll[0], s.ll[1]] : null;
+  }
+
+  // walks the line between two stops and collects every region underneath it
+  function sampleLeg(a, b, set){
+    var dLat=b[0]-a[0], dLng=b[1]-a[1];
+    if(dLng >  180) dLng -= 360;      // don't walk the long way round the globe
+    if(dLng < -180) dLng += 360;
+    var span=Math.sqrt(dLat*dLat + dLng*dLng);
+    var n=Math.min(600, Math.max(8, Math.round(span*12)));
+    var last=null;
+    for(var i=0;i<=n;i++){
+      var t=i/n;
+      var lat=a[0]+dLat*t, lng=normLng(a[1]+dLng*t);
+      // consecutive samples are nearly always still in the last region,
+      // so try that one before searching all of them again
+      if(last && regionContains(last, lat, lng)) continue;
+      var g=regionAtLL(lat, lng);
+      last = g ? g.id : null;
+      if(g) set[g.id]=true;
+    }
+  }
+
+  var landCache={ sig:null, set:{} };
+  function landRouteRegions(){
+    var sig=state.routes.map(function(r){
+      return r.land ? r.id+':'+JSON.stringify(r.stops||[]) : '';
+    }).join('|');
+    if(landCache.sig===sig) return landCache.set;
+    var set={};
+    state.routes.forEach(function(r){
+      if(!r.land) return;
+      var pts=[];
+      (r.stops||[]).forEach(function(st){
+        var ll=stopLL(st);
+        if(ll) pts.push(ll);
+      });
+      for(var i=0;i<pts.length-1;i++) sampleLeg(pts[i], pts[i+1], set);
+    });
+    landCache.sig=sig; landCache.set=set;
+    return set;
+  }
+
   function highlightRegions(){
     var visited={};
     state.places.forEach(function(p){
       if(p.country && p.type!=='wish') visited[p.country]=true;
     });
+    var crossed=landRouteRegions();
+    Object.keys(crossed).forEach(function(id){ visited[id]=true; });
     // datamaps paints countries with inline styles, so we must use .style() here
     svg.selectAll('.datamaps-subunit').style('fill', function(d){
       return visited[d.id]?css('--visited'):css('--land');
@@ -2765,6 +2874,7 @@
       });
     });
     $('jcStops').innerHTML=html;
+    paintLandToggle(r);
     $('journeyCard').classList.add('show');
 
     renderRoutes(); renderPins();
@@ -2791,6 +2901,22 @@
     var ll=projection.invert([cx,cy]);
     if(ll) goTo(ll[1], normLng(ll[0]), k, 650);
   }
+  function paintLandToggle(r){
+    var on=!!r.land;
+    $('jcLand').classList.toggle('on', on);
+    $('jcHint').textContent = on
+      ? '경로가 지나간 지역까지 색칠해요. 비행 구간이 섞여 있으면 꺼주세요.'
+      : '자동차·기차처럼 육로로 움직인 여정이라면 ‘육로’를 켜보세요. 지나간 지역도 색칠해요.';
+  }
+  $('jcLand').addEventListener('click', function(){
+    var r=state.routes.filter(function(x){return x.id===focusRouteId;})[0];
+    if(!r) return;
+    r.land=!r.land;
+    paintLandToggle(r);
+    saveData();
+    renderPins();
+    toast(r.land ? '지나간 지역도 색칠해요' : '정류장만 색칠해요');
+  });
   $('jcClose').addEventListener('click', exitJourney);
   $('jcDelete').addEventListener('click', function(){
     var r=state.routes.filter(function(x){return x.id===focusRouteId;})[0];
@@ -3052,6 +3178,107 @@
     el.classList.toggle('readonly',!interactive);
   }
 
+  // ---------- region picker ----------
+  // The world map only knows the shapes it was given, so small islands
+  // (Bali, Boracay) fall outside every country. Let them be set by hand.
+  // people type the common name, or the island they actually went to,
+  // rather than the formal country name the map data uses
+  var RG_ALIAS = {
+    KOR:'한국 남한', PRK:'북한', USA:'미국 아메리카 US',
+    GBR:'영국 UK 잉글랜드 스코틀랜드', NLD:'네덜란드 홀란드', CHE:'스위스',
+    DEU:'독일 도이칠란트', CZE:'체코', ARE:'두바이 아부다비 아랍에미리트',
+    IDN:'발리 롬복 자카르타', PHL:'보라카이 세부 팔라완 마닐라',
+    THA:'방콕 푸켓 치앙마이 코사무이', VNM:'다낭 호치민 하노이 푸꾸옥',
+    MYS:'코타키나발루 랑카위 쿠알라룸푸르', MDV:'몰디브',
+    JPN:'오키나와 홋카이도 도쿄 오사카', TWN:'대만 타이완',
+    GRC:'산토리니 미코노스 그리스', ESP:'마요르카 이비자 스페인',
+    ITA:'시칠리아 사르데냐 이탈리아', PRT:'마데이라 아조레스 포르투갈',
+    FRA:'코르시카 프랑스', HRV:'크로아티아', MMR:'미얀마 버마',
+    LKA:'스리랑카 실론', MUS:'모리셔스', SYC:'세이셸', FJI:'피지',
+    PYF:'타히티 보라보라', GUM:'괌', MNP:'사이판', COK:'쿡제도'
+  };
+
+  function regionOptions(){
+    var out=[];
+    features.forEach(function(f){
+      var en=(f.properties && f.properties.name) || f.id;
+      out.push({ id:f.id, en:en, ko:koCountry(en), alias:RG_ALIAS[f.id]||'' });
+    });
+    stateFeatures.forEach(function(f){
+      var en=((f.properties && f.properties.name) || f.id)+', USA';
+      out.push({ id:'US-'+f.id, en:en, ko:en.replace(', USA',' (미국)') });
+    });
+    out.sort(function(a,b){ return a.ko.localeCompare(b.ko, 'ko'); });
+    return out;
+  }
+
+  var rgOptions=null, rgPlaceId=null;
+
+  function paintRegionList(){
+    if(!rgOptions) rgOptions=regionOptions();
+    var q=$('rgSearch').value.trim().toLowerCase();
+    var pl=getPlace(rgPlaceId);
+    var cur=pl ? pl.country : null;
+    var hits=rgOptions.filter(function(o){
+      if(!q) return true;
+      return o.ko.toLowerCase().indexOf(q)>-1
+          || o.en.toLowerCase().indexOf(q)>-1
+          || (o.alias && o.alias.toLowerCase().indexOf(q)>-1);
+    }).slice(0,120);
+    $('rgList').innerHTML = hits.length
+      ? hits.map(function(o){
+          return '<button data-id="'+esc(o.id)+'" class="'+(o.id===cur?'on':'')+'">'+
+                 '<span>'+esc(o.ko)+'</span><span class="en">'+esc(o.en)+'</span></button>';
+        }).join('')
+      : '<div class="rg-none">검색 결과가 없어요</div>';
+  }
+  function openRegionPicker(){
+    if(READONLY) return;
+    rgPlaceId=activePlaceId;
+    if(!getPlace(rgPlaceId)) return;
+    $('rgSearch').value='';
+    paintRegionList();
+    $('regionWrap').classList.add('show');
+    setTimeout(function(){ $('rgSearch').focus(); }, 40);
+  }
+  function closeRegionPicker(){ $('regionWrap').classList.remove('show'); }
+
+  function setPlaceRegion(pl, id, en){
+    pl.country=id || null;
+    pl.countryName=en || null;
+    saveData();
+    $('dCountry').textContent = pl.countryName ? koCountry(pl.countryName) : 'Somewhere';
+    renderPins();
+    renderStatsIndex();
+  }
+
+  $('dCountry').addEventListener('click', openRegionPicker);
+  $('rgClose').addEventListener('click', closeRegionPicker);
+  $('regionWrap').addEventListener('click', function(e){ if(e.target===this) closeRegionPicker(); });
+  $('rgSearch').addEventListener('input', paintRegionList);
+  $('rgList').addEventListener('click', function(e){
+    var b=e.target.closest('button[data-id]'); if(!b) return;
+    var pl=getPlace(rgPlaceId); if(!pl) return;
+    var id=b.getAttribute('data-id');
+    var opt=null;
+    (rgOptions||[]).forEach(function(o){ if(o.id===id) opt=o; });
+    if(!opt) return;
+    setPlaceRegion(pl, opt.id, opt.en);
+    closeRegionPicker();
+    toast(opt.ko+'(으)로 지정했어요');
+  });
+  $('rgAuto').addEventListener('click', function(){
+    var pl=getPlace(rgPlaceId); if(!pl) return;
+    var geo=regionAtLL(pl.lat, pl.lng);
+    if(geo){
+      setPlaceRegion(pl, geo.id, geo.name);
+      closeRegionPicker();
+      toast(koCountry(geo.name)+'(으)로 찾았어요');
+    }else{
+      toast('이 좌표는 지도의 어느 지역에도 들어있지 않아요. 목록에서 골라주세요');
+    }
+  });
+
   // ---------- drawer ----------
   function getPlace(id){
     for(var i=0;i<state.places.length;i++) if(state.places[i].id===id) return state.places[i];
@@ -3062,6 +3289,7 @@
     activePlaceId=id;
     var p=getPlace(id); if(!p) return;
     $('dCountry').textContent=p.countryName?koCountry(p.countryName):'Somewhere';
+    $('dCountry').title=READONLY?'':'눌러서 지역 바꾸기';
     $('dName').textContent=p.name;
     $('dCoords').textContent=fmtLL(p.lat,p.lng);
     setChips($('dChips'), p.type);
